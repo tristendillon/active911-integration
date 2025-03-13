@@ -1,0 +1,11 @@
+{
+  "devDependencies": {
+    "turbo": "^2.4.4"
+  },
+  "packageManager": "pnpm@10.4.1",
+  "pnpm": {
+    "ignoredBuiltDependencies": [
+      "sharp"
+    ]
+  }
+}

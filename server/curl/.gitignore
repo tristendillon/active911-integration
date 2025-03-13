@@ -1,0 +1,45 @@
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# Binary directories
+/bin/
+/dist/
+
+# Dependency directories
+/vendor/
+
+# Debug files
+debug
+__debug_bin
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Log files
+*.log
+request.log
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+
+# Compiled output
+build/

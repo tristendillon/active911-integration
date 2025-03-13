@@ -1,0 +1,17 @@
+{
+  "name": "alerting-server",
+  "private": true,
+  "scripts": {
+    "down": "docker-compose down -v",
+    "dev": "docker-compose up postgres -d && air",
+    "build": "go build -o ./bin/server .",
+    "lint": "golangci-lint run"
+  },
+  "devDependencies": {
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "pnpm@10.4.1"
+}

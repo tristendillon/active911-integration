@@ -1,0 +1,46 @@
+{
+  "name": "Alerting Dev Environment",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "node",
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.22"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "pnpm install && cd server && go mod download",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "streetsidesoftware.code-spell-checker",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "go.toolsManagement.checkForUpdates": "local",
+        "go.useLanguageServer": true,
+        "go.formatTool": "gofmt"
+      }
+    }
+  },
+  "forwardPorts": [3000, 8080, 5432],
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend",
+      "onAutoForward": "openPreview"
+    },
+    "8080": {
+      "label": "API"
+    },
+    "5432": {
+      "label": "PostgreSQL"
+    }
+  }
+}

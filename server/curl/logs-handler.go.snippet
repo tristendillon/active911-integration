@@ -1,0 +1,56 @@
+// Add this import if not already present
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+// Add this handler function
+func getLogsHandler(w http.ResponseWriter, r *http.Request) {
+	// Set content type
+	w.Header().Set("Content-Type", "application/json")
+
+	// Open the log file
+	logFile, err := os.Open("request.log")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to open log file: " + err.Error()})
+		return
+	}
+	defer logFile.Close()
+
+	// Read the file contents
+	logData, err := io.ReadAll(logFile)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to read log file: " + err.Error()})
+		return
+	}
+
+	// Split the log file into lines
+	logLines := strings.Split(string(logData), "\n")
+	
+	// Filter out empty lines
+	var logs []string
+	for _, line := range logLines {
+		if line != "" {
+			logs = append(logs, line)
+		}
+	}
+
+	// Return logs as JSON
+	response := map[string]interface{}{
+		"logs": logs,
+		"count": len(logs),
+	}
+
+	// Write the response
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// Add this to your router setup in main.go
+// router.HandleFunc("/api/logs", getLogsHandler).Methods("GET")
