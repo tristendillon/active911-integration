@@ -160,8 +160,8 @@ func connectDB() {
 	// For temporary testing, we're using postgres user instead of alerting
 	dbHost := getEnv("DB_HOST", "localhost")
 	dbPort := getEnv("DB_PORT", "5432")
-	dbUser := getEnv("DB_USER", "postgres")
-	dbPassword := getEnv("DB_PASSWORD", "postgres")
+	dbUser := getEnv("DB_USER", "alerting")
+	dbPassword := getEnv("DB_PASSWORD", "alerting")
 	dbName := getEnv("DB_NAME", "alerting")
 
 	// Get SSL mode from environment (default to require)
@@ -203,7 +203,7 @@ func connectDB() {
 		}
 
 		log.Info().Msgf("Database connection established on attempt %d/%d", i+1, maxRetries)
-		
+
 		// Check if alerts table exists and create if it doesn't
 		if err := ensureAlertsTableExists(); err != nil {
 			log.Error().Err(err).Msg("Failed to ensure alerts table exists")
@@ -213,7 +213,7 @@ func connectDB() {
 			time.Sleep(2 * time.Second)
 			continue
 		}
-		
+
 		return
 	}
 }
@@ -228,21 +228,21 @@ func getEnv(key, fallback string) string {
 // ensureAlertsTableExists checks if the alerts table exists and creates it if it doesn't
 func ensureAlertsTableExists() error {
 	log.Info().Msg("Checking if alerts table exists...")
-	
+
 	// Check if the alerts table exists
 	var exists bool
 	err := db.QueryRow("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'alerts')").Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check if alerts table exists: %w", err)
 	}
-	
+
 	if exists {
 		log.Info().Msg("Alerts table already exists")
 		return nil
 	}
-	
+
 	log.Info().Msg("Alerts table not found, creating now...")
-	
+
 	// Create the alerts table and related objects
 	createTableSQL := `
 -- Create extension for UUID generation
@@ -298,13 +298,13 @@ BEFORE UPDATE ON alerts
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 `
-	
+
 	// Execute the SQL to create the table and related objects
 	_, err = db.Exec(createTableSQL)
 	if err != nil {
 		return fmt.Errorf("failed to create alerts table: %w", err)
 	}
-	
+
 	log.Info().Msg("Successfully created alerts table and related objects")
 	return nil
 }

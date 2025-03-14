@@ -124,7 +124,10 @@ func (h *Handler) GetAlertsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Return alerts
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(alerts)
+	err = json.NewEncoder(w).Encode(alerts)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not send GetAlertsHandler Response")
+	}
 }
 
 // CreateAlertHandler creates a new alert
@@ -272,7 +275,10 @@ func (h *Handler) CreateAlertHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(alert)
+	err = json.NewEncoder(w).Encode(alert)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not send CreateAlertHandler Response")
+	}
 }
 
 // GetAlertHandler returns a single alert by ID
@@ -298,7 +304,10 @@ func (h *Handler) GetAlertHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Return alert
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(alert)
+	err = json.NewEncoder(w).Encode(alert)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not send GetAlertHandler Response")
+	}
 }
 
 func (h *Handler) getLogsHandler(w http.ResponseWriter, r *http.Request) {
@@ -309,7 +318,10 @@ func (h *Handler) getLogsHandler(w http.ResponseWriter, r *http.Request) {
 	logFile, err := os.Open("request.log")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to open log file: " + err.Error()})
+		err = json.NewEncoder(w).Encode(map[string]string{"error": "Failed to open log file: " + err.Error()})
+		if err != nil {
+			log.Error().Err(err).Msg("Could not send Response")
+		}
 		return
 	}
 	defer logFile.Close()
@@ -318,7 +330,10 @@ func (h *Handler) getLogsHandler(w http.ResponseWriter, r *http.Request) {
 	logData, err := io.ReadAll(logFile)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Failed to read log file: " + err.Error()})
+		err = json.NewEncoder(w).Encode(map[string]string{"error": "Failed to read log file: " + err.Error()})
+		if err != nil {
+			log.Error().Err(err).Msg("Could not send Response")
+		}
 		return
 	}
 
@@ -349,7 +364,10 @@ func (h *Handler) getLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Write the response
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not send GetLogsHandler Response")
+	}
 }
 
 // UpdateAlertHandler updates an alert's status
@@ -428,7 +446,10 @@ func (h *Handler) UpdateAlertHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Return updated alert
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(alert)
+	err = json.NewEncoder(w).Encode(alert)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not send UpdateAlertHandler Response")
+	}
 }
 
 // DeleteAlertHandler deletes an alert
@@ -472,8 +493,12 @@ func (h *Handler) DeleteAlertHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Return success message
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	err = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "success",
 		"message": "Alert deleted successfully",
 	})
+
+	if err != nil {
+		log.Error().Err(err).Msg("Could not send DeleteAlertHandler Response")
+	}
 }

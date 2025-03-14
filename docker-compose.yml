@@ -6,9 +6,9 @@ services:
     ports:
       - '5432:5432'
     environment:
-      POSTGRES_USER: ${DB_USER:-alerting}
+      POSTGRES_USER: alerting
       POSTGRES_PASSWORD: ${DB_PASSWORD:-alerting}
-      POSTGRES_DB: ${DB_NAME:-alerting}
+      POSTGRES_DB: alerting
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
