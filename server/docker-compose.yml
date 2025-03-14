@@ -1,26 +1,27 @@
-version: '3.8'
-
 services:
-  postgres:
+  alerting-db:
     image: postgres:16
-    container_name: alerting-postgres
-    environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-alerting}
+    container_name: alerting-db
+    network_mode: "host"
     ports:
-      - '${DB_PORT:-5432}:5432'
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: ${DB_USER:-alerting}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-alerting}
+      POSTGRES_DB: ${DB_NAME:-alerting}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-initdb.d/migrations
-      - ./db/init:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      # Uncomment these lines to enable SSL in production
+      # - ./ssl/server.crt:/var/lib/postgresql/server.crt:ro
+      # - ./ssl/server.key:/var/lib/postgresql/server.key:ro
+      # command: >
+      #   -c ssl=on
+      #   -c ssl_cert_file=/var/lib/postgresql/server.crt
+      #   -c ssl_key_file=/var/lib/postgresql/server.key
 
   api:
+    depends_on:
+      - alerting-db
     build:
       context: .
       dockerfile: Dockerfile
@@ -28,14 +29,14 @@ services:
     volumes:
       - .:/app
     ports:
-      - '${PORT:-8080}:8080'
+      - '${PORT:-8080}:${PORT:-8080}'
     env_file:
       - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
     command: go run main.go
 
 volumes:
   postgres-data:
     name: alerting-postgres-data
+    driver: local
+    # This makes the volume "anonymous" so it will be automatically removed when the container is removed
+    external: false

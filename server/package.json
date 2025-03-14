@@ -1,9 +1,9 @@
 {
-  "name": "alerting-server",
+  "name": "server",
   "private": true,
   "scripts": {
     "down": "docker-compose down -v",
-    "dev": "docker-compose up postgres -d && air",
+    "dev": "docker-compose up alerting-db -d && air",
     "build": "go build -o ./bin/server .",
     "lint": "golangci-lint run"
   },

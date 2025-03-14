@@ -1,46 +1,73 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/go
 {
-  "name": "Alerting Dev Environment",
-  "dockerComposeFile": "docker-compose.yml",
-  "service": "devcontainer",
-  "workspaceFolder": "/workspace",
-  "remoteUser": "node",
+  "name": "Go",
+  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+  "image": "mcr.microsoft.com/devcontainers/go:dev-1.24-bookworm",
   "features": {
-    "ghcr.io/devcontainers/features/go:1": {
-      "version": "1.22"
-    },
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "20"
-    },
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/git-lfs:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    // "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
+    // "ghcr.io/devcontainers/features/python:1": {},
+    // "ghcr.io/devcontainers/features/terraform:1": {},
+    // "ghcr.io/frntn/devcontainers-features/postman:1": {},
+    // "ghcr.io/devcontainers-community/features/bazel:1": {},
+    // "ghcr.io/devcontainers-community/npm-features/prettier:1": {},
+    // "ghcr.io/robbert229/devcontainer-features/opentofu:1": {},
+    // "ghcr.io/robbert229/devcontainer-features/postgresql-client:1": {},
+    // "ghcr.io/devcontainers-extra/features/ansible:2": {},
+    "ghcr.io/devcontainers-extra/features/curl-apt-get:1": {},
+    "ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {},
+    "ghcr.io/devcontainers-extra/features/pnpm:2": {}
+    // "ghcr.io/devcontainers-extra/features/prometheus:1": {},
+    // "ghcr.io/devcontainers/features/java:1": {
+    // 	"version": "21"
+    // }
   },
-  "postCreateCommand": "pnpm install && cd server && go mod download",
+
+  // Features to add to the dev container. More info: https://containers.dev/features.
+  // "features": {},
+
+  // Use 'forwardPorts' to make a list of ports inside the container available locally.
+  "forwardPorts": [
+    // 1443
+  ],
+
+  // Use 'postCreateCommand' to run commands after the container is created.
+  // "postCreateCommand": "go version",
+
+  // Configure tool-specific properties.
+  // "customizations": {},
+
+  // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+  "remoteUser": "vscode",
+
+  "mounts": [
+    "source=${localWorkspaceFolderBasename}-pnpm-store,target=${containerWorkspaceFolder}.pnpm-store,type=volume",
+    "source=${localWorkspaceFolderBasename}-idea,target=${containerWorkspaceFolder}.idea,type=volume",
+    "source=${localWorkspaceFolderBasename}-turbo,target=${containerWorkspaceFolder}.turbo,type=volume",
+    "source=${localWorkspaceFolderBasename}-node_modules,target=${containerWorkspaceFolder}node_modules,type=volume",
+
+    "source=${localWorkspaceFolderBasename}-apex-node_modules,target=${containerWorkspaceFolder}services/apex/node_modules,type=volume",
+    "source=${localWorkspaceFolderBasename}-apex-next,target=${containerWorkspaceFolder}services/apex/.next,type=volume",
+
+    "source=${localWorkspaceFolderBasename}-apex-knox-node_modules,target=${containerWorkspaceFolder}services/apex-knox/node_modules,type=volume",
+    "source=${localWorkspaceFolderBasename}-apex-knox-next,target=${containerWorkspaceFolder}services/apex-knox/.next,type=volume"
+  ],
+
+  "postCreateCommand": "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest && go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest && brew install bufbuild/buf/buf && go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest && sudo chown vscode:vscode services/apex/",
   "customizations": {
     "vscode": {
       "extensions": [
+        "BazelBuild.vscode-bazel",
+        "zxh404.vscode-proto3",
         "golang.go",
-        "esbenp.prettier-vscode",
-        "dbaeumer.vscode-eslint",
-        "streetsidesoftware.code-spell-checker",
-        "ms-azuretools.vscode-docker"
-      ],
-      "settings": {
-        "go.toolsManagement.checkForUpdates": "local",
-        "go.useLanguageServer": true,
-        "go.formatTool": "gofmt"
-      }
+        "bufbuild.vscode-buf"
+      ]
     }
   },
-  "forwardPorts": [3000, 8080, 5432],
-  "portsAttributes": {
-    "3000": {
-      "label": "Frontend",
-      "onAutoForward": "openPreview"
-    },
-    "8080": {
-      "label": "API"
-    },
-    "5432": {
-      "label": "PostgreSQL"
-    }
-  }
+
+  "runArgs": ["--add-host=host.docker.internal:host-gateway"]
 }

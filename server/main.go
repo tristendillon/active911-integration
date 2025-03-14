@@ -47,8 +47,11 @@ type RequestData struct {
 
 func main() {
 	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		fmt.Println("No .env file found, using defaults")
+	envFile := ".env"
+	if err := godotenv.Load(envFile); err != nil {
+		fmt.Printf("Error loading %s file: %v\n", envFile, err)
+	} else {
+		fmt.Printf("Successfully loaded environment from %s\n", envFile)
 	}
 
 	setupLogger()
@@ -124,7 +127,11 @@ func main() {
 	// Doesn't block if no connections, but will otherwise wait
 	// until the timeout deadline
 	log.Info().Msg("Shutting down server...")
-	srv.Shutdown(ctx)
+	err = srv.Shutdown(ctx)
+
+	if err != nil {
+		log.Fatal().Msg("Could not shut down server gracefully")
+	}
 	log.Info().Msg("Server gracefully stopped")
 }
 
@@ -149,29 +156,65 @@ func setupLogger() {
 
 func connectDB() {
 	// Get database connection details from environment variables
+
+	// For temporary testing, we're using postgres user instead of alerting
 	dbHost := getEnv("DB_HOST", "localhost")
 	dbPort := getEnv("DB_PORT", "5432")
 	dbUser := getEnv("DB_USER", "postgres")
 	dbPassword := getEnv("DB_PASSWORD", "postgres")
 	dbName := getEnv("DB_NAME", "alerting")
 
+	// Get SSL mode from environment (default to require)
+	sslMode := getEnv("DB_SSL_MODE", "require")
+
+	// Debug output to see actual environment variables
+	log.Debug().Msgf("Connecting with: host=%s, port=%s, user=%s, db=%s, ssl=%s",
+		dbHost, dbPort, dbUser, dbName, sslMode)
+
+	// Build connection string with SSL mode
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		dbUser, dbPassword, dbHost, dbPort, dbName, sslMode)
 	// Build connection string
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		dbHost, dbPort, dbUser, dbPassword, dbName)
 
-	// Connect to database
+	log.Debug().Msgf("Connect String %v", connStr)
+	// Connect to database with retries
 	var err error
-	db, err = sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to connect to database")
-	}
+	maxRetries := 5
+	for i := 0; i < maxRetries; i++ {
+		db, err = sql.Open("postgres", connStr)
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to connect to database (attempt %d/%d)", i+1, maxRetries)
+			if i == maxRetries-1 {
+				log.Fatal().Err(err).Msg("Failed to connect to database after all retries")
+			}
+			time.Sleep(2 * time.Second)
+			continue
+		}
 
-	// Check connection
-	err = db.Ping()
-	if err != nil {
-		log.Warn().Err(err).Msg("Could not establish database connection")
-	} else {
-		log.Info().Msg("Database connection established")
+		// Check connection
+		err = db.Ping()
+		if err != nil {
+			log.Warn().Err(err).Msgf("Could not establish database connection (attempt %d/%d)", i+1, maxRetries)
+			if i == maxRetries-1 {
+				log.Fatal().Err(err).Msg("Could not establish database connection after all retries")
+			}
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		log.Info().Msgf("Database connection established on attempt %d/%d", i+1, maxRetries)
+		
+		// Check if alerts table exists and create if it doesn't
+		if err := ensureAlertsTableExists(); err != nil {
+			log.Error().Err(err).Msg("Failed to ensure alerts table exists")
+			if i == maxRetries-1 {
+				log.Fatal().Err(err).Msg("Failed to initialize database schema after all retries")
+			}
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		
+		return
 	}
 }
 
@@ -180,6 +223,90 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// ensureAlertsTableExists checks if the alerts table exists and creates it if it doesn't
+func ensureAlertsTableExists() error {
+	log.Info().Msg("Checking if alerts table exists...")
+	
+	// Check if the alerts table exists
+	var exists bool
+	err := db.QueryRow("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'alerts')").Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check if alerts table exists: %w", err)
+	}
+	
+	if exists {
+		log.Info().Msg("Alerts table already exists")
+		return nil
+	}
+	
+	log.Info().Msg("Alerts table not found, creating now...")
+	
+	// Create the alerts table and related objects
+	createTableSQL := `
+-- Create extension for UUID generation
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create alerts table with the new structure
+CREATE TABLE IF NOT EXISTS alerts (
+    id VARCHAR(255) PRIMARY KEY,
+    agency_name VARCHAR(255) NOT NULL,
+    agency_id INTEGER NOT NULL,
+    agency_timezone VARCHAR(50) NOT NULL,
+    alert_city VARCHAR(255),
+    alert_coordinate_source VARCHAR(100),
+    alert_cross_street TEXT,
+    alert_description TEXT,
+    alert_details TEXT,
+    alert_lat FLOAT,
+    alert_lon FLOAT,
+    alert_map_address TEXT,
+    alert_map_code VARCHAR(255),
+    alert_place VARCHAR(255),
+    alert_priority VARCHAR(50),
+    alert_received VARCHAR(50),
+    alert_source VARCHAR(100),
+    alert_state VARCHAR(50),
+    alert_unit VARCHAR(50),
+    alert_units VARCHAR(255),
+    alert_pagegroups JSONB, -- Store as JSON array
+    alert_stamp FLOAT,
+    status VARCHAR(50) NOT NULL DEFAULT 'new',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create index on alert status for faster queries
+CREATE INDEX alerts_status_idx ON alerts (status);
+CREATE INDEX alerts_agency_id_idx ON alerts (agency_id);
+CREATE INDEX alerts_received_idx ON alerts (alert_received);
+CREATE INDEX alerts_state_city_idx ON alerts (alert_state, alert_city);
+
+-- Create function to update updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create trigger to update updated_at timestamp on alerts table
+CREATE TRIGGER update_alerts_updated_at
+BEFORE UPDATE ON alerts
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+`
+	
+	// Execute the SQL to create the table and related objects
+	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		return fmt.Errorf("failed to create alerts table: %w", err)
+	}
+	
+	log.Info().Msg("Successfully created alerts table and related objects")
+	return nil
 }
 
 // CORS middleware to allow all origins
@@ -302,7 +429,11 @@ func logRequestData(reqData RequestData) {
 	}
 
 	// Flush the file to make sure it's written
-	reqLog.Sync()
+	err = reqLog.Sync()
+
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to sync log file")
+	}
 }
 
 var wsUpgrader = websocket.Upgrader{
@@ -363,6 +494,9 @@ func handleWebSocketConnection(w http.ResponseWriter, r *http.Request, hub *webS
 		logRequestData(reqData)
 
 		// Echo the message back to the client
-		c.SendMessage("echo", jsonBody)
+		err = c.SendMessage("echo", jsonBody)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to send message to client")
+		}
 	})
 }
