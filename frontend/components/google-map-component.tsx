@@ -20,7 +20,7 @@ interface GoogleMapComponentProps {
 
 export function GoogleMapComponent({ center = defaultMapCenter, zoom = 15 }: GoogleMapComponentProps) {
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-[calc(100vh-150px)]">
       <GoogleMap
         mapContainerStyle={defaultMapContainerStyle}
         center={center}

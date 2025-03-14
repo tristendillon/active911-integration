@@ -1,0 +1,47 @@
+import React, { useEffect, useState } from 'react';
+import { Alert } from '@/lib/types';
+import { formatDistanceToNow } from 'date-fns';
+import { Badge } from './ui/badge';
+import { Separator } from './ui/separator';
+import { CommandShortcut } from './ui/command';
+interface AlertItemProps {
+  units?: string[];
+  alert: Alert;
+}
+
+export default function AlertItem({ units, alert }: AlertItemProps) {
+  const recievedAt = new Date(Number(alert.alert.received) * 1000);
+  const tooLong = alert.alert.details.length > 120;
+  const [formatedRecievedAt, setFormatedRecievedAt] = useState(formatDistanceToNow(recievedAt, { addSuffix: true }));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFormatedRecievedAt(formatDistanceToNow(recievedAt, { addSuffix: true }));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [recievedAt]);
+
+  if (isNaN(Number(alert.alert.received))) {
+    return <div>Invalid Time Received</div>;
+  }
+  return (
+    <div className="flex flex-col border border-border rounded-md p-2 gap-1">
+      <div className="flex flex-row justify-between items-center">
+        <p className="font-semibold">{alert.alert.description}</p>
+        <CommandShortcut className="text-sm">{formatedRecievedAt}</CommandShortcut>
+      </div>
+      <Separator />
+      <p className="text-sm px-4 overflow-hidden max-h-16 line-clamp-3">{alert.alert.details}</p>
+      <div className="flex flex-row justify-between items-center">
+        <CommandShortcut className="ml-0">{alert.alert.map_address}</CommandShortcut>
+        <div className="flex flex-row gap-2 items-center h-full">
+          {alert.alert.units.split(' ').map((unit) => (
+            <Badge variant={units?.includes(unit) ? 'destructive' : 'default'} key={unit}>
+              {unit}
+            </Badge>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

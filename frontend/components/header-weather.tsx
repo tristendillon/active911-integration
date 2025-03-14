@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sun, Moon, Cloud, CloudRain, Droplets, Wind } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 
 // Define types for props
 interface WeatherComponentProps {
+  center: google.maps.LatLngLiteral;
   time: Date;
   weatherData?: {
     temp: number;
@@ -16,11 +17,180 @@ interface WeatherComponentProps {
   };
 }
 
+export interface WeatherValues {
+  cloudBase: number;
+  cloudCeiling: number;
+  cloudCover: number;
+  dewPoint: number;
+  freezingRainIntensity: number;
+  humidity: number;
+  precipitationProbability: number;
+  pressureSurfaceLevel: number;
+  rainIntensity: number;
+  sleetIntensity: number;
+  snowIntensity: number;
+  temperature: number;
+  temperatureApparent: number;
+  uvHealthConcern: number;
+  uvIndex: number;
+  visibility: number;
+  weatherCode: number;
+  windDirection: number;
+  windGust: number;
+  windSpeed: number;
+}
+
+export interface WeatherData {
+  time: string;
+  values: WeatherValues;
+}
+
+export interface Location {
+  lat: number;
+  lon: number;
+  name: string;
+  type: string;
+}
+
+export interface WeatherResponse {
+  data: WeatherData;
+  location: Location;
+}
+
+export interface TimelineValues {
+  cloudBaseAvg: number;
+  cloudBaseMax: number;
+  cloudBaseMin: number;
+  cloudCeilingAvg: number;
+  cloudCeilingMax: number;
+  cloudCeilingMin: number;
+  cloudCoverAvg: number;
+  cloudCoverMax: number;
+  cloudCoverMin: number;
+  dewPointAvg: number;
+  dewPointMax: number;
+  dewPointMin: number;
+  evapotranspirationAvg: number;
+  evapotranspirationMax: number;
+  evapotranspirationMin: number;
+  evapotranspirationSum: number;
+  freezingRainIntensityAvg: number;
+  freezingRainIntensityMax: number;
+  freezingRainIntensityMin: number;
+  hailProbabilityAvg: number;
+  hailProbabilityMax: number;
+  hailProbabilityMin: number;
+  hailSizeAvg: number;
+  hailSizeMax: number;
+  hailSizeMin: number;
+  humidityAvg: number;
+  humidityMax: number;
+  humidityMin: number;
+  iceAccumulationAvg: number;
+  iceAccumulationLweAvg: number;
+  iceAccumulationLweMax: number;
+  iceAccumulationLweMin: number;
+  iceAccumulationLweSum: number;
+  iceAccumulationMax: number;
+  iceAccumulationMin: number;
+  iceAccumulationSum: number;
+  moonriseTime: string | null;
+  moonsetTime: string;
+  precipitationProbabilityAvg: number;
+  precipitationProbabilityMax: number;
+  precipitationProbabilityMin: number;
+  pressureSeaLevelAvg: number;
+  pressureSeaLevelMax: number;
+  pressureSeaLevelMin: number;
+  pressureSurfaceLevelAvg: number;
+  pressureSurfaceLevelMax: number;
+  pressureSurfaceLevelMin: number;
+  rainAccumulationAvg: number;
+  rainAccumulationLweAvg: number;
+  rainAccumulationLweMax: number;
+  rainAccumulationLweMin: number;
+  rainAccumulationMax: number;
+  rainAccumulationMin: number;
+  rainAccumulationSum: number;
+  rainIntensityAvg: number;
+  rainIntensityMax: number;
+  rainIntensityMin: number;
+  sleetAccumulationAvg: number;
+  sleetAccumulationLweAvg: number;
+  sleetAccumulationLweMax: number;
+  sleetAccumulationLweMin: number;
+  sleetAccumulationLweSum: number;
+  sleetAccumulationMax: number;
+  sleetAccumulationMin: number;
+  sleetIntensityAvg: number;
+  sleetIntensityMax: number;
+  sleetIntensityMin: number;
+  snowAccumulationAvg: number;
+  snowAccumulationLweAvg: number;
+  snowAccumulationLweMax: number;
+  snowAccumulationLweMin: number;
+  snowAccumulationLweSum: number;
+  snowAccumulationMax: number;
+  snowAccumulationMin: number;
+  snowAccumulationSum: number;
+  snowDepthAvg: number;
+  snowDepthMax: number;
+  snowDepthMin: number;
+  snowDepthSum: number;
+  snowIntensityAvg: number;
+  snowIntensityMax: number;
+  snowIntensityMin: number;
+  sunriseTime: string;
+  sunsetTime: string;
+  temperatureApparentAvg: number;
+  temperatureApparentMax: number;
+  temperatureApparentMin: number;
+  temperatureAvg: number;
+  temperatureMax: number;
+  temperatureMin: number;
+  uvHealthConcernAvg: number;
+  uvHealthConcernMax: number;
+  uvHealthConcernMin: number;
+  uvIndexAvg: number;
+  uvIndexMax: number;
+  uvIndexMin: number;
+  visibilityAvg: number;
+  visibilityMax: number;
+  visibilityMin: number;
+  weatherCodeMax: number;
+  weatherCodeMin: number;
+  windDirectionAvg: number;
+  windGustAvg: number;
+  windGustMax: number;
+  windGustMin: number;
+  windSpeedAvg: number;
+  windSpeedMax: number;
+  windSpeedMin: number;
+}
+
+export interface DailyTimeline {
+  time: string;
+  values: TimelineValues;
+}
+
+export interface WeatherLocation {
+  lat: number;
+  lon: number;
+}
+
+export interface ForecastResponse {
+  timelines: {
+    daily: DailyTimeline[];
+  };
+  location: WeatherLocation;
+}
+
 function fahrenheitToCelsius(fahrenheit: number): number {
   return ((fahrenheit - 32) * 5) / 9;
 }
 
 export function WeatherComponent({
+  center,
   time,
   weatherData = {
     temp: 63,
@@ -30,6 +200,57 @@ export function WeatherComponent({
     wind: '16 mph',
   },
 }: WeatherComponentProps) {
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [forecast, setForecast] = useState<ForecastResponse | null>(null);
+  const { lat, lng } = center;
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    // Fetch weather data
+    const fetchWeather = async () => {
+      try {
+        const response = await fetch(`https://api.tomorrow.io/v4/weather/realtime?location=${lat}%2C${lng}&apikey=${process.env.NEXT_PUBLIC_WEATHER_API_KEY}`, {
+          signal: abortController.signal,
+        });
+        const data = await response.json();
+        setWeather(data);
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError') {
+          console.error('Error fetching weather:', error);
+        }
+      }
+    };
+
+    // Fetch forecast data
+    const getForecastData = async () => {
+      try {
+        const response = await fetch(
+          `https://api.tomorrow.io/v4/weather/forecast?location=${lat}%2C${lng}&timesteps=1d&units=imperial&apikey=${process.env.NEXT_PUBLIC_WEATHER_API_KEY}`,
+          { signal: abortController.signal }
+        );
+        const data = await response.json();
+        setForecast(data);
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError') {
+          console.error('Error fetching forecast:', error);
+        }
+      }
+    };
+
+    fetchWeather();
+    const weatherInterval = setInterval(fetchWeather, 1800000); // Every 30 mins
+    getForecastData();
+
+    return () => {
+      abortController.abort(); // Abort ongoing fetch requests
+      clearInterval(weatherInterval); // Clear weather interval
+    };
+  }, [lat, lng]);
+
+  if (!forecast || !weather) {
+    return null;
+  }
+
   // Calculate sun/moon icon fill based on time of day
   const getSunMoonPosition = () => {
     const hour = time.getHours();
