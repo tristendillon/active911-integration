@@ -1,0 +1,66 @@
+services:
+  # Database
+  alerting-db:
+    image: postgres:16
+    container_name: alerting-db
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: ${DB_USER:-alerting}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-alerting}
+      POSTGRES_DB: ${DB_NAME:-alerting}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: frontend
+    env_file:
+      - ./frontend/.env
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+
+  # Server
+  server:
+    depends_on:
+      - alerting-db
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: server
+    env_file:
+      - ./server/.env
+    environment:
+      - DB_HOST=alerting-db
+    networks:
+      - app-network
+
+  # Nginx
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    container_name: nginx
+    ports:
+      - '80:80'
+    depends_on:
+      - frontend
+      - server
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    name: alerting-postgres-data
+    driver: local

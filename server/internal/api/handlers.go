@@ -80,16 +80,14 @@ func NewHandler(store *storage.Storage, hub *websocket.Hub) *Handler {
 
 // RegisterRoutes registers API routes on the router
 func (h *Handler) RegisterRoutes(r *mux.Router) {
-	// API routes
-	apiRouter := r.PathPrefix("/api").Subrouter()
 	// Alerts endpoints
-	apiRouter.HandleFunc("/alerts", h.GetAlertsHandler).Methods("GET")
-	apiRouter.HandleFunc("/alerts", h.CreateAlertHandler).Methods("POST")
-	apiRouter.HandleFunc("/alerts/{id}", h.GetAlertHandler).Methods("GET")
-	apiRouter.HandleFunc("/alerts/{id}", h.UpdateAlertHandler).Methods("PUT")
-	apiRouter.HandleFunc("/alerts/{id}", h.DeleteAlertHandler).Methods("DELETE")
+	r.HandleFunc("/alerts", h.GetAlertsHandler).Methods("GET")
+	r.HandleFunc("/alerts", h.CreateAlertHandler).Methods("POST")
+	r.HandleFunc("/alerts/{id}", h.GetAlertHandler).Methods("GET")
+	r.HandleFunc("/alerts/{id}", h.UpdateAlertHandler).Methods("PUT")
+	r.HandleFunc("/alerts/{id}", h.DeleteAlertHandler).Methods("DELETE")
 
-	apiRouter.HandleFunc("/logs", h.getLogsHandler).Methods("GET")
+	r.HandleFunc("/logs", h.getLogsHandler).Methods("GET")
 }
 
 // GetAlertsHandler returns a list of alerts

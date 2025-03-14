@@ -1,53 +1,47 @@
-# Builder
-FROM node:22-alpine AS builder
+FROM node:18-alpine AS builder
+
 WORKDIR /app
 
-# Install pnpm globally
+# Install pnpm
 RUN npm install -g pnpm
 
-# Copy root workspace files
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-# Copy the service package.json
+# Copy workspace files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/
-# Enable workspace feature
-RUN pnpm config set node-linker hoisted
 
-# Install dependencies using the workspace
-# RUN pnpm install --frozen-lockfile --prod # TODO: Fix this issue when building
+# Install dependencies
 RUN pnpm install
 
-# Copy the rest of the service files
-COPY frontend ./frontend
-# Copy necessary lib files
-COPY libs ./libs
+# Copy the frontend app
+COPY frontend/ ./frontend/
 
-# Build from the service directory
+# Build the app
 WORKDIR /app/frontend
-RUN pnpm install
-RUN pnpm run build
+RUN pnpm build
 
-# Runner
-FROM node:22-alpine AS runner
+# Production image
+FROM node:18-alpine AS runner
 WORKDIR /app
 
-# Install pnpm globally
+# Install pnpm
 RUN npm install -g pnpm
 
-# Copy root workspace files
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY frontend/package.json ./frontend
+# Copy workspace files
+COPY package.json pnpm-workspace.yaml ./
+COPY frontend/package.json ./frontend/
 
-# Enable workspace feature
-RUN pnpm config set node-linker hoisted
+# Install production dependencies
+RUN pnpm install --prod
 
-# Install only production dependencies
-# RUN pnpm install --frozen-lockfile --prod # TODO: Fix this issue when building
-RUN pnpm install
-
+# Set up the app directory
 WORKDIR /app/frontend
+
+# Copy built app
 COPY --from=builder /app/frontend/.next ./.next
 COPY --from=builder /app/frontend/public ./public
 COPY --from=builder /app/frontend/next.config.ts ./next.config.ts
 
 EXPOSE 3000
+
+# Start the app
 CMD ["pnpm", "start"]
