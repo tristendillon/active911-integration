@@ -1,12 +1,12 @@
 'use client';
 
+import { WeatherAlertBanner } from '@/components/weather/weather-alert-banner';
 import type { Weather } from '@/lib/types';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 
-const API_URL = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/Manhattan%20kansas/2025-03-14/2025-03-16?unitGroup=us&elements=datetime%2Cname%2Caddress%2Clatitude%2Clongitude%2Ctempmax%2Ctempmin%2Ctemp%2Cfeelslikemax%2Cfeelslikemin%2Cfeelslike%2Cprecip%2Cprecipprob%2Cprecipcover%2Cpreciptype%2Cwindspeed%2Ccloudcover%2Cvisibility%2Cconditions%2Cicon&include=days%2Calerts%2Cevents&key=${process.env.NEXT_PUBLIC_WEATHER_API_KEY}&contentType=json`;
-
 interface WeatherProviderProps {
   children: React.ReactNode;
+  center: google.maps.LatLngLiteral;
 }
 
 interface WeatherContextType {
@@ -79,6 +79,7 @@ const testWeather: Weather = {
       icon: 'clear-day',
     },
   ],
+  // alerts: [],
   alerts: [
     {
       event: 'Fire Weather Watch',
@@ -109,7 +110,11 @@ const testWeather: Weather = {
   ],
 };
 
-export function WeatherProvider({ children }: WeatherProviderProps) {
+function getAPIUrl(center: google.maps.LatLngLiteral) {
+  return `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${center.lat},${center.lng}/2025-03-14/2025-03-16?unitGroup=us&elements=datetime%2Cname%2Caddress%2Clatitude%2Clongitude%2Ctempmax%2Ctempmin%2Ctemp%2Cfeelslikemax%2Cfeelslikemin%2Cfeelslike%2Cprecip%2Cprecipprob%2Cprecipcover%2Cpreciptype%2Cwindspeed%2Ccloudcover%2Cvisibility%2Cconditions%2Cicon&include=days%2Calerts%2Cevents&key=${process.env.NEXT_PUBLIC_WEATHER_API_KEY}&contentType=json`;
+}
+
+export function WeatherProvider({ children, center }: WeatherProviderProps) {
   const [weather, setWeather] = useState<Weather | null>(null);
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);

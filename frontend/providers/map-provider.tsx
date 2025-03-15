@@ -1,16 +1,28 @@
-//Since the map will be laoded and displayed on client side
 'use client';
 
-// Import necessary modules and functions from external libraries and our own project
-import { Libraries, useJsApiLoader } from '@react-google-maps/api';
-import { ReactNode } from 'react';
+import { Libraries, useJsApiLoader, GoogleMap } from '@react-google-maps/api';
+import { ReactNode, useState, useRef, createContext, useContext } from 'react';
 
-// Define a list of libraries to load from the Google Maps API
-const libraries = ['places', 'drawing', 'geometry'];
+// Define a type for the map context
+type MapContextType = {
+  map: google.maps.Map | null;
+  setMap: (map: google.maps.Map) => void;
+};
 
-// Define a function component called MapProvider that takes a children prop
+// Create a context to store and share the map instance
+const MapContext = createContext<MapContextType>({
+  map: null,
+  setMap: () => {},
+});
+
+// Custom hook to access the map instance
+export const useMap = () => useContext(MapContext);
+
+const libraries = ['places', 'drawing', 'geometry', 'routes'];
+
 export function MapProvider({ children }: { children: ReactNode }) {
-  // Load the Google Maps JavaScript API asynchronously
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+
   const { isLoaded: scriptLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_API as string,
     libraries: libraries as Libraries,
@@ -20,6 +32,5 @@ export function MapProvider({ children }: { children: ReactNode }) {
 
   if (!scriptLoaded) return <p>Map Script is loading ...</p>;
 
-  // Return the children prop wrapped by this MapProvider component
-  return children;
+  return <MapContext.Provider value={{ map, setMap }}>{children}</MapContext.Provider>;
 }

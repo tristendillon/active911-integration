@@ -5,14 +5,13 @@ import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/com
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { AlertTriangle } from 'lucide-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { useEffect, useRef, useState } from 'react';
 import { LoadingWeatherAlerts } from './loading-weather-alerts';
 import { NoWeatherAlerts } from './no-weather-alerts';
+import { CommandShortcut } from '../ui/command';
 
-const AUTO_SCROLL_DELAY = 90; // 90 seconds
-
+const AUTO_SCROLL_DELAY = 90;
 export default function WeatherAlerts() {
   const { weather, loading } = useWeather();
   const [current, setCurrent] = useState(0);
@@ -70,7 +69,6 @@ export default function WeatherAlerts() {
     };
   }, [api]);
 
-  // Auto-scroll effect for the description text
   useEffect(() => {
     if (!weather?.alerts || weather.alerts.length === 0) return;
 
@@ -121,46 +119,38 @@ export default function WeatherAlerts() {
 
   return (
     <div className="p-4 h-full w-full">
-      <div className="flex items-center gap-2 mb-4">
-        <AlertTriangle className="h-5 w-5 text-yellow-500" />
-        <h2 className="text-xl font-bold">Weather Alerts</h2>
-      </div>
       {loading && <LoadingWeatherAlerts />}
       {!loading && weather?.alerts?.length === 0 && <NoWeatherAlerts />}
       {!loading && weather?.alerts && weather.alerts.length > 0 && (
-        <div className="flex items-center gap-2">
-          <div className="text-sm">
-            <span className="font-semibold">Rotating alert in: </span>
-            {formattedTime}
-          </div>
+        <div className="w-full flex items-center gap-2 justify-end">
+          <CommandShortcut className="text-sm">{formattedTime}</CommandShortcut>
         </div>
       )}
       {!loading && weather?.alerts && weather.alerts.length > 0 && (
-        <Carousel setApi={setApi} className="w-full h-full" plugins={[plugin.current]}>
-          <CarouselContent className="h-full">
+        <Carousel setApi={setApi} className="flex flex-col w-full h-full pb-5" plugins={[plugin.current]}>
+          <CarouselContent className="flex h-full">
             {weather.alerts.map((alert, alertIndex) => (
               <CarouselItem key={alert.id} className="h-full">
-                <Card className="h-[80%]">
-                  <CardHeader>
+                <Card className="flex flex-col h-full">
+                  <CardHeader className="flex-shrink-0">
                     <div className="flex justify-between items-start">
                       <CardTitle>{alert.event}</CardTitle>
-                      <Badge variant={alert.event.includes('Warning') ? 'destructive' : 'secondary'}>{alert.event.includes('Warning') ? 'Warning' : 'Watch'}</Badge>
                     </div>
                     <CardDescription>{alert.headline}</CardDescription>
                   </CardHeader>
-                  <CardContent className="h-full">
-                    <div className="space-y-2">
-                      <div className="text-sm">
+                  <CardContent className="flex-grow flex flex-col h-full overflow-hidden">
+                    <div className="flex flex-col h-full">
+                      <div className="text-sm flex-shrink-0">
                         <span className="font-semibold">Starts: </span>
                         {format(new Date(alert.onset), 'PPp')}
                       </div>
-                      <div className="text-sm">
+                      <div className="text-sm flex-shrink-0">
                         <span className="font-semibold">Ends: </span>
                         {format(new Date(alert.ends), 'PPp')}
                       </div>
                       <div
                         id="auto-scroll"
-                        className="mt-4 text-sm max-h-40 overflow-y-hidden"
+                        className="flex flex-col gap-2 mt-4 text-sm overflow-y-hidden flex-grow"
                         ref={(el) => {
                           scrollContainerRefs.current[alertIndex] = el;
                         }}
@@ -170,9 +160,7 @@ export default function WeatherAlerts() {
                         }}
                       >
                         {alert.description.split('\n').map((line, i) => (
-                          <p key={i} className="mb-2">
-                            {line}
-                          </p>
+                          <p key={i}>{line}</p>
                         ))}
                       </div>
                     </div>

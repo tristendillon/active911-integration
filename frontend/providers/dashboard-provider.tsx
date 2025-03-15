@@ -6,9 +6,12 @@ import { useAlerts } from '@/hooks/use-alerts';
 
 interface DashboardContextType {
   password: string;
+  isNewAlert: boolean;
+  setIsNewAlert: React.Dispatch<React.SetStateAction<boolean>>;
   alerts: {
     loading: boolean;
     data: Alert[];
+    setData: React.Dispatch<React.SetStateAction<Alert[]>>;
   };
   emitListener: (eventName: any, listener: (...args: any[]) => void) => void;
   units: string[];
@@ -25,14 +28,18 @@ interface DashboardProviderProps {
 }
 
 export function DashboardProvider({ children, password, units, center }: DashboardProviderProps) {
-  const { alerts, loading, emitListener, isConnected } = useAlerts(password);
+  const [isNewAlert, setIsNewAlert] = useState(false);
+  const { alerts, setAlerts, loading, emitListener, isConnected } = useAlerts(password);
 
   return (
     <DashboardContext.Provider
       value={{
         password,
+        isNewAlert,
+        setIsNewAlert,
         alerts: {
           loading,
+          setData: setAlerts,
           data: alerts,
         },
         emitListener,

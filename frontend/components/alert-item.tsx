@@ -11,7 +11,6 @@ interface AlertItemProps {
 
 export default function AlertItem({ units, alert }: AlertItemProps) {
   const recievedAt = new Date(alert.alert.stamp * 1000);
-  const tooLong = alert.alert.details.length > 120;
   const [formatedRecievedAt, setFormatedRecievedAt] = useState(formatDistanceToNow(recievedAt, { addSuffix: true }));
 
   useEffect(() => {
