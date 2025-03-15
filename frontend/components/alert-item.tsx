@@ -10,7 +10,7 @@ interface AlertItemProps {
 }
 
 export default function AlertItem({ units, alert }: AlertItemProps) {
-  const recievedAt = new Date(Number(alert.alert.received) * 1000);
+  const recievedAt = new Date(alert.alert.stamp * 1000);
   const tooLong = alert.alert.details.length > 120;
   const [formatedRecievedAt, setFormatedRecievedAt] = useState(formatDistanceToNow(recievedAt, { addSuffix: true }));
 
@@ -21,9 +21,6 @@ export default function AlertItem({ units, alert }: AlertItemProps) {
     return () => clearInterval(interval);
   }, [recievedAt]);
 
-  if (isNaN(Number(alert.alert.received))) {
-    return <div>Invalid Time Received</div>;
-  }
   return (
     <div className="flex flex-col border border-border rounded-md p-2 gap-1">
       <div className="flex flex-row justify-between items-center">

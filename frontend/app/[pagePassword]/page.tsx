@@ -3,6 +3,7 @@ import Header from '@/components/header';
 import Sidebar from '@/components/sidebar';
 import { DashboardProvider } from '@/providers/dashboard-provider';
 import { MapProvider } from '@/providers/map-provider';
+import { WeatherProvider } from '@/providers/weather-provider';
 import React from 'react';
 import { z } from 'zod';
 
@@ -135,13 +136,15 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   return (
     <MapProvider>
       <main className="h-full w-full">
-        <DashboardProvider password={pagePassword} units={pageGroupsArray} center={center}>
-          <Header />
-          <div className="h-full w-full flex">
-            <Sidebar />
-            <GoogleMapComponent center={center} zoom={18} />
-          </div>
-        </DashboardProvider>
+        <WeatherProvider>
+          <DashboardProvider password={pagePassword} units={pageGroupsArray} center={center}>
+            <Header />
+            <div className="h-full w-full flex">
+              <Sidebar />
+              <GoogleMapComponent center={center} zoom={18} />
+            </div>
+          </DashboardProvider>
+        </WeatherProvider>
       </main>
     </MapProvider>
   );
