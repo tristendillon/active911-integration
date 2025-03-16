@@ -1,41 +1,50 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: alerting-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5432
+      - DB_USER=alerting
+      - DB_PASSWORD=alerting
+      - DB_NAME=alerting
+      - DB_SSL_MODE=disable
+      - API_PASSWORD=c3c7ecb61de9998c5009545b707c28fe
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=console
+    depends_on:
+      alerting-db:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
   alerting-db:
     image: postgres:16
     container_name: alerting-db
     network_mode: "host"
     ports:
-      - '5432:5432'
+      - "5432:5432"
     environment:
-      POSTGRES_USER: ${DB_USER:-alerting}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-alerting}
-      POSTGRES_DB: ${DB_NAME:-alerting}
+      - POSTGRES_USER=alerting
+      - POSTGRES_PASSWORD=alerting
+      - POSTGRES_DB=alerting
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-      # Uncomment these lines to enable SSL in production
-      # - ./ssl/server.crt:/var/lib/postgresql/server.crt:ro
-      # - ./ssl/server.key:/var/lib/postgresql/server.key:ro
-      # command: >
-      #   -c ssl=on
-      #   -c ssl_cert_file=/var/lib/postgresql/server.crt
-      #   -c ssl_key_file=/var/lib/postgresql/server.key
-
-  api:
-    depends_on:
-      - alerting-db
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: alerting-api
-    volumes:
-      - .:/app
-    ports:
-      - '${PORT:-8080}:${PORT:-8080}'
-    env_file:
-      - .env
-    command: go run main.go
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alerting"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
 volumes:
-  postgres-data:
+  postgres_data:
     name: alerting-postgres-data
     driver: local
     # This makes the volume "anonymous" so it will be automatically removed when the container is removed

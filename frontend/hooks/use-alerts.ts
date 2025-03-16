@@ -29,10 +29,11 @@ export function useAlerts(password: string) {
       const data = await response.json();
 
       if (isMountedRef.current) {
-        if (data === null) {
+        const alerts = data.data;
+        if (alerts === null) {
           setAlerts([]);
         } else {
-          setAlerts(data);
+          setAlerts(alerts);
         }
         setLoading(false);
       }
@@ -55,7 +56,7 @@ export function useAlerts(password: string) {
     // First clean up any existing connection
     cleanupWebSocket();
 
-    const websocket = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws?password=${password}`);
+    const websocket = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/alerts?password=${password}`);
 
     websocket.onopen = () => {
       if (isMountedRef.current) {

@@ -16,6 +16,7 @@ interface DashboardContextType {
   emitListener: (eventName: any, listener: (...args: any[]) => void) => void;
   units: string[];
   center: google.maps.LatLngLiteral;
+  sound: boolean;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -25,12 +26,12 @@ interface DashboardProviderProps {
   password: string;
   units: string[];
   center: google.maps.LatLngLiteral;
+  sound: string;
 }
 
-export function DashboardProvider({ children, password, units, center }: DashboardProviderProps) {
+export function DashboardProvider({ children, password, units, center, sound }: DashboardProviderProps) {
   const [isNewAlert, setIsNewAlert] = useState(false);
   const { alerts, setAlerts, loading, emitListener, isConnected } = useAlerts(password);
-
   return (
     <DashboardContext.Provider
       value={{
@@ -42,6 +43,7 @@ export function DashboardProvider({ children, password, units, center }: Dashboa
           setData: setAlerts,
           data: alerts,
         },
+        sound: sound ? sound === 'on' : false,
         emitListener,
         units,
         center,

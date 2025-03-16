@@ -2,10 +2,11 @@
   "name": "server",
   "private": true,
   "scripts": {
-    "down": "docker-compose down -v",
     "dev": "docker-compose up alerting-db -d && air",
-    "build": "go build -o ./bin/server .",
-    "lint": "golangci-lint run"
+    "build": "go build -o alerting-api cmd/api/main.go",
+    "start": "go run cmd/api/main.go",
+    "down": "docker-compose down -v",
+    "lint": "golangci-lint run ./..."
   },
   "devDependencies": {
     "prettier": "^3.0.0"

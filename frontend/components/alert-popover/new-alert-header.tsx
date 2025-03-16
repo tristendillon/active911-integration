@@ -7,9 +7,10 @@ interface NewAlertHeaderProps {
   alert: Alert;
   onDismiss: () => void;
   autoCloseTime: number;
+  onPlaySound: () => void;
 }
 
-export default function NewAlertHeader({ alert, onDismiss, autoCloseTime }: NewAlertHeaderProps) {
+export default function NewAlertHeader({ alert, onDismiss, autoCloseTime, onPlaySound }: NewAlertHeaderProps) {
   return (
     <header className="bg-background p-4 border-b shadow-sm w-full">
       <div className="w-full flex items-center  justify-between">

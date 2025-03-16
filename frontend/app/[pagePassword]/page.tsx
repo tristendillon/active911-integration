@@ -1,8 +1,4 @@
-import NewAlertPopover from '@/components/alert-popover/new-alert-popover';
 import Dashboard from '@/components/dashboard';
-import { GoogleMapComponent } from '@/components/google-map-component';
-import Header from '@/components/header';
-import Sidebar from '@/components/sidebar';
 import { DashboardProvider } from '@/providers/dashboard-provider';
 import { MapProvider } from '@/providers/map-provider';
 import { WeatherProvider } from '@/providers/weather-provider';
@@ -16,6 +12,7 @@ interface DashboardPageProps {
   searchParams: Promise<{
     location: string;
     pageGroups: string;
+    sound: string;
   }>;
 }
 
@@ -56,6 +53,7 @@ const inputSchema = z
       }
     ),
     pagePassword: z.string(),
+    sound: z.string().optional(),
   })
   .superRefine((val, ctx) => {
     const locationArray = val.location.split(',');
@@ -97,31 +95,34 @@ const inputSchema = z
 
 export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
   const { pagePassword } = await params;
-  const { location, pageGroups } = await searchParams;
+  const { location, pageGroups, sound } = await searchParams;
 
   const { error: inputError, data: inputData } = inputSchema.safeParse({
     location,
     pageGroups,
     pagePassword,
+    sound,
   });
 
-  if (inputError) {
-    return (
-      <div className="text-red-500 flex flex-col gap-2">
-        {inputError.errors.map((error) => (
-          <div key={error.path.join('.') + error.message}>
-            <span className="font-bold">{error.path.join('.')}: </span>
-            <span>{error.message}</span>
-          </div>
-        ))}
-      </div>
-    );
+  // Default values if validation fails
+  const defaultLocation = '39.204728120622434,-96.58484741069773';
+  const defaultPageGroups = 'E1,HZMT1,BAT1';
+  const defaultSound = 'on';
+  let validLocation = defaultLocation;
+  let validPageGroups = defaultPageGroups;
+  let validSound = defaultSound;
+  if (!inputError) {
+    validLocation = inputData.location;
+    validPageGroups = inputData.pageGroups || defaultPageGroups;
+    validSound = inputData.sound || defaultSound;
+  } else {
+    console.error('Input validation error:', inputError.errors);
   }
 
-  const locationArray = inputData.location.split(',');
+  const locationArray = validLocation.split(',');
   const latitude = locationArray[0];
   const longitude = locationArray[1];
-  const pageGroupsArray = inputData.pageGroups.split(',');
+  const pageGroupsArray = validPageGroups.split(',');
 
   if (pagePassword !== process.env.PAGE_PASSWORD) {
     return <div>Invalid password</div>;
@@ -139,7 +140,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     <MapProvider>
       <main className="h-full w-full">
         <WeatherProvider center={center}>
-          <DashboardProvider password={pagePassword} units={pageGroupsArray} center={center}>
+          <DashboardProvider password={pagePassword} units={pageGroupsArray} center={center} sound={sound}>
             <Dashboard />
           </DashboardProvider>
         </WeatherProvider>

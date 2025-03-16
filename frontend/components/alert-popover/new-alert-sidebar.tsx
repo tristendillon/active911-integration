@@ -25,8 +25,15 @@ export default function NewAlertSidebar({ alert, units }: NewAlertSidebarProps) 
       <div className="flex flex-col gap-6 max-w-2xl">
         {/* Alert description - large and prominent */}
         <div className="p-5 rounded-lg border">
-          <h2 className="text-5xl font-bold text-red-500 mb-3">{alert.alert.description}</h2>
-          <p className="text-base">{alert.alert.details}</p>
+          <h1 className="text-5xl font-bold text-red-500 mb-3">{alert.alert.description}</h1>
+          <div className="text-base whitespace-pre-wrap">
+            {alert.alert.details?.split(/\\r\\n|\\n|\r\n|\n/).map((line, index) => (
+              <React.Fragment key={index}>
+                {line.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}
+                {index < (alert.alert.details?.split(/\\r\\n|\\n|\r\n|\n/) || []).length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
 
         {/* Alert details in a clean card */}

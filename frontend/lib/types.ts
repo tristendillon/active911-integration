@@ -6,24 +6,24 @@ export interface Agency {
 
 export interface AlertDetails {
   id: string;
-  city: string;
-  coordinate_source: string;
-  cross_street: string;
-  custom_identifiers?: string;
-  description: string;
-  details: string;
-  dispatch_coords: string;
+  city?: string | null;
+  coordinate_source?: string | null;
+  cross_street?: string | null;
+  custom_identifiers?: string | null;
+  description?: string | null;
+  details?: string | null;
+  dispatch_coords?: string | null;
   lat: number;
   lon: number;
-  map_address: string;
-  map_code?: string;
-  place: string;
-  priority: string;
-  received: string;
-  source?: string;
-  state: string;
-  unit?: string;
-  units: string;
+  map_address?: string | null;
+  map_code?: string | null;
+  place?: string | null;
+  priority?: string | null;
+  received?: string | null;
+  source?: string | null;
+  state?: string | null;
+  unit?: string | null;
+  units?: string | null;
   pagegroups: string[];
   stamp: number;
   status: string; // Added for internal tracking

@@ -31,7 +31,7 @@ export default function AlertItem({ units, alert }: AlertItemProps) {
       <div className="flex flex-row justify-between items-center">
         <CommandShortcut className="ml-0">{alert.alert.map_address}</CommandShortcut>
         <div className="flex flex-row gap-2 items-center h-full">
-          {alert.alert.units.split(' ').map((unit) => (
+          {alert.alert.units?.split(' ').map((unit) => (
             <Badge variant={units?.includes(unit) ? 'destructive' : 'default'} key={unit}>
               {unit}
             </Badge>

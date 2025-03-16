@@ -1,19 +1,15 @@
 package storage
 
-import (
-	"database/sql"
-	"errors"
-)
+import "errors"
 
-// Common errors
+// Common error definitions
 var (
-	ErrNotFound = errors.New("record not found")
-)
+	// ErrNotFound indicates that a requested resource was not found
+	ErrNotFound = errors.New("resource not found")
 
-// MapError maps SQL errors to application errors
-func MapError(err error) error {
-	if err == sql.ErrNoRows {
-		return ErrNotFound
-	}
-	return err
-}
+	// ErrInvalidInput indicates that the input data is invalid
+	ErrInvalidInput = errors.New("invalid input data")
+
+	// ErrDatabaseOperation indicates a database operation failure
+	ErrDatabaseOperation = errors.New("database operation failed")
+)

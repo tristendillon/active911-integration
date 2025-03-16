@@ -7,18 +7,22 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog/log"
+	"github.com/user/alerting/server/internal/logging"
+	"github.com/user/alerting/server/internal/models"
 )
 
 const (
-	// Time allowed to write a message to the peer.
+	// Time allowed to write a message to the peer
 	writeWait = 10 * time.Second
 
-	// Maximum message size allowed from peer.
+	// Maximum message size allowed from peer
 	maxMessageSize = 512 * 1024 // 512KB
 
-	// Send heartbeat messages to peer with this period.
+	// Time to send heartbeats to peers
 	heartbeatPeriod = 30 * time.Second
+
+	// Buffer size for the send channel
+	sendBufferSize = 256
 )
 
 var (
@@ -26,137 +30,218 @@ var (
 	space   = []byte{' '}
 )
 
-// Message represents a data structure for messages sent over websocket
-type Message struct {
-	Type    string    `json:"type"`
-	Content any       `json:"content"`
-	ID      string    `json:"id"`
-	Time    time.Time `json:"time"`
+// Client represents a connected websocket client
+type Client struct {
+	hub    *Hub
+	conn   *websocket.Conn
+	send   chan models.WebSocketMessage
+	id     string
+	logger *logging.Logger
 }
 
+// MessageHandler is a function that handles incoming messages
+type MessageHandler func(message models.WebSocketMessage, client *Client)
+
 // NewClient creates a new websocket client
-func NewClient(hub *Hub, conn *websocket.Conn) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn, logger *logging.Logger) *Client {
 	clientID := uuid.New().String()
 
 	return &Client{
-		hub:  hub,
-		conn: conn,
-		send: make(chan []byte, 256),
-		id:   clientID,
+		hub:    hub,
+		conn:   conn,
+		send:   make(chan models.WebSocketMessage, sendBufferSize),
+		id:     clientID,
+		logger: logger.WithField("client_id", clientID),
 	}
 }
 
-// ReadPump pumps messages from the websocket connection to the hub.
-func (c *Client) ReadPump(messageHandler func([]byte, *Client)) {
+// ReadPump pumps messages from the websocket connection to the hub
+func (c *Client) ReadPump(messageHandler MessageHandler) {
 	defer func() {
-		c.hub.unregister <- c
-		c.conn.Close()
+		c.hub.Unregister(c)
+		if err := c.conn.Close(); err != nil {
+			c.logger.Error(err, "Error closing WebSocket connection")
+		}
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
-	
-	// Set up a ping handler - when client sends ping, server responds with pong
+
+	// Protocol-level ping handler
 	c.conn.SetPingHandler(func(appData string) error {
-		log.Debug().Str("client_id", c.id).Msg("Received ping from client, sending pong")
+		c.logger.Debug("Received protocol ping, sending protocol pong")
 		err := c.conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(writeWait))
 		if err != nil {
-			log.Error().Err(err).Str("client_id", c.id).Msg("Failed to send pong")
+			c.logger.Error(err, "Failed to send protocol pong")
 		}
+
+		// Log the ping/pong at protocol level
+		if c.hub != nil && c.hub.logMessageCallback != nil {
+			pingResponse := models.WebSocketMessage{
+				Type:    "protocol-pong",
+				Content: "ping-response",
+				ID:      uuid.New().String(),
+				Time:    time.Now(),
+			}
+			c.hub.logMessageCallback(pingResponse, "server", c.id)
+		}
+
 		return nil
 	})
 
 	for {
-		_, message, err := c.conn.ReadMessage()
+		_, messageBytes, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Error().Err(err).Str("client_id", c.id).Msg("Unexpected close error")
+				c.logger.Error(err, "Unexpected close error")
 			}
 			break
 		}
 
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+		messageBytes = bytes.TrimSpace(bytes.Replace(messageBytes, newline, space, -1))
 
-		// Process "ping" messages from client for manual ping/pong (in addition to protocol-level)
-		var msgData map[string]interface{}
-		if json.Unmarshal(message, &msgData) == nil {
-			if msgType, ok := msgData["type"].(string); ok && msgType == "ping" {
-				log.Debug().Str("client_id", c.id).Msg("Received application ping, sending pong")
-				pongMsg := Message{
-					Type:    "pong",
-					Content: map[string]interface{}{"timestamp": time.Now().Unix()},
-					ID:      uuid.New().String(),
-					Time:    time.Now(),
-				}
-				
-				data, err := json.Marshal(pongMsg)
-				if err == nil {
-					c.send <- data
-				} else {
-					log.Error().Err(err).Str("client_id", c.id).Msg("Failed to marshal pong message")
-				}
-				continue
+		// Parse the message
+		var message models.WebSocketMessage
+		if err := json.Unmarshal(messageBytes, &message); err != nil {
+			// If we can't unmarshal, create a simple message with the raw data
+			message = models.WebSocketMessage{
+				Type:    "unknown",
+				Content: string(messageBytes),
+				ID:      uuid.New().String(),
+				Time:    time.Now(),
 			}
 		}
 
-		// Call the message handler if provided
+		// Log the incoming message
+		c.logger.Debugf("Received %s message from client", message.Type)
+
+		// Log through the callback
+		if c.hub != nil && c.hub.logMessageCallback != nil {
+			c.hub.logMessageCallback(message, "client", c.id)
+		}
+
+		// Handle ping messages at application level
+		if message.Type == "ping" {
+			pongMessage := models.WebSocketMessage{
+				Type:    "pong",
+				Content: map[string]interface{}{"timestamp": time.Now().Unix()},
+				ID:      uuid.New().String(),
+				Time:    time.Now(),
+			}
+
+			// Log the pong response
+			if c.hub != nil && c.hub.logMessageCallback != nil {
+				c.logger.Debugf("Logging pong message from client %s", c.id)
+				c.hub.logMessageCallback(pongMessage, "server", c.id)
+			}
+
+			c.send <- pongMessage
+			continue
+		}
+
+		// Process the message with the handler
 		if messageHandler != nil {
 			messageHandler(message, c)
 		}
 	}
 }
 
-// WritePump pumps messages from the hub to the websocket connection.
+// WritePump pumps messages from the hub to the websocket connection
 func (c *Client) WritePump() {
 	heartbeatTicker := time.NewTicker(heartbeatPeriod)
 	defer func() {
 		heartbeatTicker.Stop()
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			c.logger.Error(err, "Error closing WebSocket connection")
+		}
 	}()
 
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				// The hub closed the channel.
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				c.logger.Error(err, "Failed to set write deadline")
 				return
+			}
+
+			if !ok {
+				// The hub closed the channel
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					c.logger.Error(err, "Failed to write close message")
+				}
+				return
+			}
+
+			// Marshal the message
+			messageBytes, err := json.Marshal(message)
+			if err != nil {
+				c.logger.Error(err, "Failed to marshal message")
+				continue
 			}
 
 			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				return
 			}
-			w.Write(message)
 
-			// Add queued messages to the current websocket message.
+			if _, err := w.Write(messageBytes); err != nil {
+				c.logger.Error(err, "Failed to write message")
+				return
+			}
+
+			// Add queued messages to the current websocket message
 			n := len(c.send)
 			for i := 0; i < n; i++ {
-				w.Write(newline)
-				w.Write(<-c.send)
+				nextMessage := <-c.send
+				nextMessageBytes, err := json.Marshal(nextMessage)
+				if err != nil {
+					c.logger.Error(err, "Failed to marshal queued message")
+					continue
+				}
+
+				if _, err := w.Write(newline); err != nil {
+					c.logger.Error(err, "Failed to write newline")
+					return
+				}
+
+				if _, err := w.Write(nextMessageBytes); err != nil {
+					c.logger.Error(err, "Failed to write queued message")
+					return
+				}
 			}
 
 			if err := w.Close(); err != nil {
 				return
 			}
+
 		case <-heartbeatTicker.C:
-			// Send a heartbeat message that clients can process
-			log.Debug().Str("client_id", c.id).Msg("Sending heartbeat to client")
-			heartbeat := Message{
+			// Send heartbeat message
+			c.logger.Debug("Sending heartbeat to client")
+			heartbeat := models.WebSocketMessage{
 				Type:    "heartbeat",
 				Content: map[string]interface{}{"timestamp": time.Now().Unix()},
 				ID:      uuid.New().String(),
 				Time:    time.Now(),
 			}
-			data, err := json.Marshal(heartbeat)
+
+			// Log the heartbeat
+			if c.hub != nil && c.hub.logMessageCallback != nil {
+				c.hub.logMessageCallback(heartbeat, "server", c.id)
+			}
+
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				c.logger.Error(err, "Failed to set write deadline for heartbeat")
+				return
+			}
+
+			// Marshal and send the heartbeat
+			heartbeatBytes, err := json.Marshal(heartbeat)
 			if err != nil {
-				log.Error().Err(err).Str("client_id", c.id).Msg("Failed to marshal heartbeat")
+				c.logger.Error(err, "Failed to marshal heartbeat")
 				continue
 			}
-			
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := c.conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				log.Error().Err(err).Str("client_id", c.id).Msg("Failed to send heartbeat")
+
+			if err := c.conn.WriteMessage(websocket.TextMessage, heartbeatBytes); err != nil {
+				c.logger.Error(err, "Failed to send heartbeat")
 				return
 			}
 		}
@@ -168,20 +253,22 @@ func (c *Client) GetID() string {
 	return c.id
 }
 
-// SendMessage sends a structured message to this client
-func (c *Client) SendMessage(msgType string, content interface{}) error {
-	msg := Message{
-		Type:    msgType,
+// SendMessage sends a message to this client
+func (c *Client) SendMessage(messageType string, content interface{}) {
+	message := models.WebSocketMessage{
+		Type:    messageType,
 		Content: content,
 		ID:      uuid.New().String(),
 		Time:    time.Now(),
 	}
 
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return err
+	// Log the outgoing message
+	c.logger.Debugf("Sending %s message to client", messageType)
+
+	// Log through the callback
+	if c.hub != nil && c.hub.logMessageCallback != nil {
+		c.hub.logMessageCallback(message, "server", c.id)
 	}
 
-	c.send <- data
-	return nil
+	c.send <- message
 }

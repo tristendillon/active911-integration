@@ -11,7 +11,7 @@
 ## Server-specific Commands
 - Go build: `cd server && go build -o ./bin/server .`
 - Go test: `cd server && go test ./...`
-- Go lint: `cd server && golangci-lint run`
+- Go lint: `cd server && npm run lint` or `cd server && golangci-lint run ./...`
 
 ## Frontend-specific Commands
 - Next.js build: `cd frontend && npm run build`

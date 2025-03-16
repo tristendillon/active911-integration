@@ -1,502 +1,229 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/user/alerting/internal/api"
-	"github.com/user/alerting/internal/storage"
-	webSocketClient "github.com/user/alerting/internal/websocket"
+	"github.com/user/alerting/server/internal/api"
+	"github.com/user/alerting/server/internal/auth"
+	"github.com/user/alerting/server/internal/config"
+	"github.com/user/alerting/server/internal/logging"
+	"github.com/user/alerting/server/internal/middleware"
+	"github.com/user/alerting/server/internal/models"
+	"github.com/user/alerting/server/internal/storage"
+	"github.com/user/alerting/server/internal/websocket"
 )
-
-var (
-	db     *sql.DB
-	logger zerolog.Logger
-	logMu  sync.Mutex
-	reqLog *os.File
-)
-
-// RequestData stores request information for logging
-type RequestData struct {
-	ID        string          `json:"id"` // Unique request ID for correlation
-	Method    string          `json:"method"`
-	Path      string          `json:"path"`
-	Body      json.RawMessage `json:"body"`
-	Headers   http.Header     `json:"headers"`
-	Timestamp time.Time       `json:"timestamp"`
-	SourceIP  string          `json:"source_ip"`
-}
 
 func main() {
-	// Load environment variables
+	// Load .env file if it exists
 	envFile := ".env"
 	if err := godotenv.Load(envFile); err != nil {
-		fmt.Printf("Error loading %s file: %v\n", envFile, err)
+		fmt.Printf("Warning: Error loading %s file: %v\n", envFile, err)
 	} else {
 		fmt.Printf("Successfully loaded environment from %s\n", envFile)
 	}
 
-	setupLogger()
+	// Load configuration
+	cfg := config.New()
+	cfg.Initialize()
 
-	// Set up request log file
-	var err error
-	reqLog, err = os.OpenFile("request.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to open request log file")
-	} else {
-		log.Debug().Str("path", "request.log").Msg("Successfully opened request log file")
-	}
-	defer reqLog.Close()
+	// Setup logger
+	logger := logging.New(cfg.Logging.Level, cfg.Logging.Format)
+	logger.Info("Starting server...")
 
 	// Connect to database
-	connectDB()
-	defer db.Close()
+	db, err := connectToDatabase(cfg, logger)
+	if err != nil {
+		logger.Fatal(err, "Failed to connect to database")
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			logger.Error(err, "Error closing database connection")
+		}
+	}()
 
-	// Create storage instance
+	// Create storage
 	store := storage.NewStorage(db)
 
-	// Create router
-	r := mux.NewRouter()
-
-	// Apply middleware
-	r.Use(corsMiddleware)
-	r.Use(loggingMiddleware)
-
-	// Create and start WebSocket hub
-	hub := webSocketClient.NewHub()
-	go hub.Run()
-
-	// Set up API handlers and routes with WebSocket hub
-	apiHandler := api.NewHandler(store, hub)
-	apiHandler.RegisterRoutes(r)
-
-	// Set up websocket routes with our new handler
-	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		handleWebSocketConnection(w, r, hub)
-	})
-
-	// Set up server
-	port := flag.String("port", "8080", "port to run the server on")
-	flag.Parse()
-
-	srv := &http.Server{
-		Addr:         ":" + *port,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+	// Ensure database schema exists
+	if err := store.EnsureSchema(context.Background()); err != nil {
+		logger.Fatal(err, "Failed to ensure database schema")
 	}
 
-	// Run server in a goroutine so that it doesn't block
+	// Create authenticator
+	authenticator := auth.New(cfg.Auth.APIPassword, logger)
+
+	// Initialize websocket hubs
+	alertsHub := websocket.NewHub(websocket.HubTypeAlerts, logger)
+	logsHub := websocket.NewHub(websocket.HubTypeLogs, logger)
+
+	// Start the hubs
+	go alertsHub.Run()
+	go logsHub.Run()
+
+	// Initialize router
+	r := mux.NewRouter()
+
+	// Setup middlewares
+	loggerMiddleware := middleware.NewLogger(logger, func(logEntry models.LogEntry) error {
+		return store.SaveLog(context.Background(), logEntry)
+	}, func(eventType string, data interface{}) {
+		// Broadcast log events to websocket clients
+		logsHub.BroadcastEvent(eventType, data)
+	})
+
+	// Apply middleware to all routes
+	r.Use(middleware.CORS(cfg.Server.CorsAllowedOrigins))
+	r.Use(authenticator.Auth) // Authenticate API requests
+	r.Use(loggerMiddleware.Logging)
+
+	// Register API routes
+	apiHandler := api.New(store, logger, func(eventType string, data interface{}) {
+		// Broadcast API events to websocket clients
+		alertsHub.BroadcastEvent(eventType, data)
+	})
+	apiHandler.RegisterRoutes(r)
+
+	// Register WebSocket handlers
+	wsHandler := websocket.NewHandler(alertsHub, logsHub, authenticator, logger)
+	r.HandleFunc("/ws/alerts", wsHandler.HandleAlertsConnection)
+	r.HandleFunc("/ws/logs", wsHandler.HandleLogsConnection)
+
+	// Setup log message callback for both hubs
+	logMessageCallback := func(message models.WebSocketMessage, source, clientID string) {
+		saveWebSocketMessage(message, clientID, source, store, logger)
+	}
+	alertsHub.SetLogMessageCallback(logMessageCallback)
+	logsHub.SetLogMessageCallback(logMessageCallback)
+
+	// Setup HTTP server
+	serverAddr := ":" + cfg.Server.Port
+	srv := &http.Server{
+		Addr:         serverAddr,
+		Handler:      r,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
+	}
+
+	// Start server in a goroutine
 	go func() {
-		log.Info().Msgf("Starting server on port %s", *port)
+		logger.Infof("Server listening on %s", serverAddr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal().Err(err).Msg("Server failed to start")
+			logger.Fatal(err, "Failed to start server")
 		}
 	}()
 
 	// Set up graceful shutdown
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	// Block until we receive a signal
-	<-c
+	// Wait for interrupt signal
+	<-quit
+	logger.Info("Server is shutting down...")
 
-	// Create a deadline to wait for
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	// Create shutdown context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
 
-	// Doesn't block if no connections, but will otherwise wait
-	// until the timeout deadline
-	log.Info().Msg("Shutting down server...")
-	err = srv.Shutdown(ctx)
+	// Shutdown server
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Fatal(err, "Server forced to shutdown")
+	}
 
+	logger.Info("Server exited properly")
+}
+
+// connectToDatabase connects to the database
+func connectToDatabase(cfg *config.Config, logger *logging.Logger) (*sql.DB, error) {
+	// Get database connection string
+	dsn := cfg.Database.DSN
+	if dsn == "" {
+		dsn = fmt.Sprintf(
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			cfg.Database.Host,
+			cfg.Database.Port,
+			cfg.Database.User,
+			cfg.Database.Password,
+			cfg.Database.Name,
+			cfg.Database.SSLMode,
+		)
+	}
+
+	// Connect to database
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		log.Fatal().Msg("Could not shut down server gracefully")
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
-	log.Info().Msg("Server gracefully stopped")
-}
 
-func setupLogger() {
-	// Configure zerolog
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	// Set connection pool parameters
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
-	// Set debug level to see more logs during development
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	// Ping database to verify connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	// Set up console writer
-	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
-
-	// Create multi-writer for console and file
-	logger = zerolog.New(consoleWriter).With().Timestamp().Logger()
-
-	// Set as global logger
-	log.Logger = logger
-
-	log.Debug().Msg("Logger initialized at debug level")
-}
-
-func connectDB() {
-	// Get database connection details from environment variables
-
-	// For temporary testing, we're using postgres user instead of alerting
-	dbHost := getEnv("DB_HOST", "localhost")
-	dbPort := getEnv("DB_PORT", "5432")
-	dbUser := getEnv("DB_USER", "alerting")
-	dbPassword := getEnv("DB_PASSWORD", "alerting")
-	dbName := getEnv("DB_NAME", "alerting")
-
-	// Get SSL mode from environment (default to require)
-	sslMode := getEnv("DB_SSL_MODE", "require")
-
-	// Debug output to see actual environment variables
-	log.Debug().Msgf("Connecting with: host=%s, port=%s, user=%s, db=%s, ssl=%s",
-		dbHost, dbPort, dbUser, dbName, sslMode)
-
-	// Build connection string with SSL mode
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		dbUser, dbPassword, dbHost, dbPort, dbName, sslMode)
-	// Build connection string
-
-	log.Debug().Msgf("Connect String %v", connStr)
-	// Connect to database with retries
-	var err error
-	maxRetries := 5
-	for i := 0; i < maxRetries; i++ {
-		db, err = sql.Open("postgres", connStr)
-		if err != nil {
-			log.Error().Err(err).Msgf("Failed to connect to database (attempt %d/%d)", i+1, maxRetries)
-			if i == maxRetries-1 {
-				log.Fatal().Err(err).Msg("Failed to connect to database after all retries")
-			}
-			time.Sleep(2 * time.Second)
-			continue
-		}
-
-		// Check connection
-		err = db.Ping()
-		if err != nil {
-			log.Warn().Err(err).Msgf("Could not establish database connection (attempt %d/%d)", i+1, maxRetries)
-			if i == maxRetries-1 {
-				log.Fatal().Err(err).Msg("Could not establish database connection after all retries")
-			}
-			time.Sleep(2 * time.Second)
-			continue
-		}
-
-		log.Info().Msgf("Database connection established on attempt %d/%d", i+1, maxRetries)
-
-		// Check if alerts table exists and create if it doesn't
-		if err := ensureAlertsTableExists(); err != nil {
-			log.Error().Err(err).Msg("Failed to ensure alerts table exists")
-			if i == maxRetries-1 {
-				log.Fatal().Err(err).Msg("Failed to initialize database schema after all retries")
-			}
-			time.Sleep(2 * time.Second)
-			continue
-		}
-
-		return
+	if err := db.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
+
+	logger.Info("Connected to database successfully")
+	return db, nil
 }
 
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
-}
-
-// ensureAlertsTableExists checks if the alerts table exists and creates it if it doesn't
-func ensureAlertsTableExists() error {
-	log.Info().Msg("Checking if alerts table exists...")
-
-	// Check if the alerts table exists
-	var exists bool
-	err := db.QueryRow("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'alerts')").Scan(&exists)
+// saveWebSocketMessage logs a WebSocket message to the database
+func saveWebSocketMessage(message models.WebSocketMessage, clientID, direction string, store *storage.Storage, logger *logging.Logger) {
+	// Marshal the WebSocket message for request body
+	bodyJSON, err := json.Marshal(message)
 	if err != nil {
-		return fmt.Errorf("failed to check if alerts table exists: %w", err)
-	}
-
-	if exists {
-		log.Info().Msg("Alerts table already exists")
-		return nil
-	}
-
-	log.Info().Msg("Alerts table not found, creating now...")
-
-	// Create the alerts table and related objects
-	createTableSQL := `
--- Create extension for UUID generation
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- Create alerts table with the new structure
-CREATE TABLE IF NOT EXISTS alerts (
-    id VARCHAR(255) PRIMARY KEY,
-    agency_name VARCHAR(255) NOT NULL,
-    agency_id INTEGER NOT NULL,
-    agency_timezone VARCHAR(50) NOT NULL,
-    alert_city VARCHAR(255),
-    alert_coordinate_source VARCHAR(100),
-    alert_cross_street TEXT,
-    alert_description TEXT,
-    alert_details TEXT,
-    alert_lat FLOAT,
-    alert_lon FLOAT,
-    alert_map_address TEXT,
-    alert_map_code VARCHAR(255),
-    alert_place VARCHAR(255),
-    alert_priority VARCHAR(50),
-    alert_received VARCHAR(50),
-    alert_source VARCHAR(100),
-    alert_state VARCHAR(50),
-    alert_unit VARCHAR(50),
-    alert_units VARCHAR(255),
-    alert_pagegroups JSONB, -- Store as JSON array
-    alert_stamp FLOAT,
-    status VARCHAR(50) NOT NULL DEFAULT 'new',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create index on alert status for faster queries
-CREATE INDEX alerts_status_idx ON alerts (status);
-CREATE INDEX alerts_agency_id_idx ON alerts (agency_id);
-CREATE INDEX alerts_received_idx ON alerts (alert_received);
-CREATE INDEX alerts_state_city_idx ON alerts (alert_state, alert_city);
-
--- Create function to update updated_at column
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Create trigger to update updated_at timestamp on alerts table
-CREATE TRIGGER update_alerts_updated_at
-BEFORE UPDATE ON alerts
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
-`
-
-	// Execute the SQL to create the table and related objects
-	_, err = db.Exec(createTableSQL)
-	if err != nil {
-		return fmt.Errorf("failed to create alerts table: %w", err)
-	}
-
-	log.Info().Msg("Successfully created alerts table and related objects")
-	return nil
-}
-
-// CORS middleware to allow all origins
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-
-		// Handle preflight requests
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		// Pass to the next middleware/handler
-		next.ServeHTTP(w, r)
-	})
-}
-
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-
-		type contextKey string
-		// Generate a unique request ID
-		requestID := uuid.New().String()
-
-		// Add request ID to context
-		ctx := context.WithValue(r.Context(), contextKey("requestID"), requestID)
-		r = r.WithContext(ctx)
-
-		// Add request ID to response headers
-		w.Header().Set("X-Request-ID", requestID)
-
-		// Log request with request ID
-		log.Info().
-			Str("request_id", requestID).
-			Str("method", r.Method).
-			Str("path", r.URL.Path).
-			Str("remote_addr", r.RemoteAddr).
-			Msg("Request received")
-
-		// Create a copy of the request body so we can read it
-		bodyBytes, err := io.ReadAll(r.Body)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to read request body")
-			http.Error(w, "Failed to read request body", http.StatusInternalServerError)
-			return
-		}
-
-		// Create a new ReadCloser to replace the original body
-		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
-		// Create a safe JSON representation of the body
-		var safeBodyJSON json.RawMessage
-		if len(bodyBytes) > 0 {
-			// Try to validate if the body is proper JSON
-			if json.Valid(bodyBytes) {
-				safeBodyJSON = bodyBytes
-			} else {
-				// If not valid JSON, create a JSON string with the body content
-				safeBodyJSON, _ = json.Marshal(string(bodyBytes))
-			}
-		} else {
-			// Empty body case
-			safeBodyJSON = json.RawMessage([]byte("null"))
-		}
-
-		// Call the next handler
-		next.ServeHTTP(w, r)
-
-		reqData := RequestData{
-			ID:        requestID,
-			Method:    r.Method,
-			Path:      r.URL.Path,
-			Body:      safeBodyJSON,
-			Headers:   r.Header,
-			Timestamp: time.Now(),
-			SourceIP:  r.RemoteAddr,
-		}
-
-		logRequestData(reqData)
-
-		// Log response time with request ID
-		log.Info().
-			Str("request_id", requestID).
-			Str("method", r.Method).
-			Str("path", r.URL.Path).
-			Dur("elapsed_ms", time.Since(start)).
-			Msg("Request processed")
-	})
-}
-
-func logRequestData(reqData RequestData) {
-	// Thread-safe logging to file
-	logMu.Lock()
-	defer logMu.Unlock()
-
-	logJSON, err := json.Marshal(reqData)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to marshal request data for logging")
+		logger.Error(err, "Failed to marshal WebSocket message for logging")
 		return
 	}
 
-	// Log to console for debugging
-	log.Debug().Str("request_id", reqData.ID).Msg("Writing request to log file")
-
-	// Write to log file
-	_, err = reqLog.Write(logJSON)
+	// Marshal headers for metadata
+	headers := map[string][]string{
+		"X-WebSocket-Message-Type": {message.Type},
+		"X-WebSocket-Source":       {direction},
+		"X-WebSocket-Client-ID":    {clientID},
+	}
+	headersJSON, err := json.Marshal(headers)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to write to request log file")
-		return
+		logger.Error(err, "Failed to marshal WebSocket headers")
+		headersJSON = []byte("{}")
 	}
 
-	_, err = reqLog.Write([]byte("\n"))
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to write newline to request log file")
+	// Create log entry with a timestamp-based suffix to ensure uniqueness
+	now := time.Now()
+	uniqueID := message.ID + "-" + now.Format("20060102150405.000000000")
+
+	logEntry := models.LogEntry{
+		ID:        uniqueID,
+		Type:      "ws_message",
+		Method:    "WEBSOCKET",
+		Path:      "/ws",
+		Body:      bodyJSON,
+		Headers:   headersJSON,
+		Timestamp: now,
+		SourceIP:  clientID,
+		ClientID:  clientID,
+		EventType: message.Type,
+		Direction: direction,
 	}
 
-	// Flush the file to make sure it's written
-	err = reqLog.Sync()
-
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to sync log file")
+	// Save log entry
+	if err := store.SaveLog(context.Background(), logEntry); err != nil {
+		logger.Error(err, "Failed to save WebSocket message log")
 	}
-}
-
-var wsUpgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all connections for development
-	},
-}
-
-func handleWebSocketConnection(w http.ResponseWriter, r *http.Request, hub *webSocketClient.Hub) {
-	// Upgrade HTTP connection to WebSocket
-	conn, err := wsUpgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to upgrade connection to WebSocket")
-		return
-	}
-
-	// Create new client for this connection
-	client := webSocketClient.NewClient(hub, conn)
-
-	// Register the client with the hub
-	hub.Register(client)
-
-	// Start client's message writing pump
-	go client.WritePump()
-
-	// Handle incoming messages
-	client.ReadPump(func(message []byte, c *webSocketClient.Client) {
-		// Process the received message
-		var jsonBody interface{}
-		if err := json.Unmarshal(message, &jsonBody); err != nil {
-			// If it's not valid JSON, use string as body
-			jsonBody = string(message)
-		}
-
-		// Generate a unique request ID for the WebSocket message
-		requestID := uuid.New().String()
-
-		// Create request data
-		reqData := RequestData{
-			ID:        requestID,
-			Method:    "WEBSOCKET",
-			Path:      r.URL.Path,
-			Body:      json.RawMessage(message),
-			Headers:   r.Header,
-			Timestamp: time.Now(),
-			SourceIP:  conn.RemoteAddr().String(),
-		}
-
-		// Log and store the message with request ID
-		logJSON, _ := json.MarshalIndent(reqData, "", "  ")
-		log.Info().
-			Str("request_id", requestID).
-			Str("client_id", c.GetID()).
-			RawJSON("websocket_data", logJSON).
-			Msg("WebSocket message received")
-		logRequestData(reqData)
-
-		// Echo the message back to the client
-		err = c.SendMessage("echo", jsonBody)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to send message to client")
-		}
-	})
 }

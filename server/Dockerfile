@@ -1,31 +1,35 @@
 FROM golang:1.22-alpine AS builder
 
-WORKDIR /app
+WORKDIR /src
 
-# Copy go mod and sum files
-COPY server/go.mod server/go.sum ./
+# Copy go.mod and go.sum files
+COPY go.mod go.sum ./
 
-# Download all dependencies
+# Download dependencies
 RUN go mod download
 
 # Copy the source code
-COPY server/ ./
+COPY . .
 
-# Build the app
-RUN go build -o server .
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/server ./cmd/api
 
-# Final image
+# Create a minimal image
 FROM alpine:latest
+
+# Install CA certificates for HTTPS connections
+RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
 
 # Copy the binary from the builder stage
-COPY --from=builder /app/server .
+COPY --from=builder /bin/server /app/server
 
-# Copy required configuration files if needed
-COPY --from=builder /app/ssl /app/ssl
+# Copy any additional files needed at runtime
+COPY .env.example /app/.env
 
+# Expose the application port
 EXPOSE 8080
 
-# Run the binary
-CMD ["./server"]
+# Run the application
+CMD ["/app/server"]
