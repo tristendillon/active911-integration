@@ -199,7 +199,7 @@ export const LogDetailSidebar = () => {
                   </div>
                 </div>
 
-                {selectedLog.body && selectedLog.body !== '{}' && selectedLog.body !== 'null' && (
+                {log?.body && log.body !== '{}' && log.body !== 'null' && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-400 mb-2">Body</h3>
                     <div className="border rounded-md overflow-hidden">
@@ -220,7 +220,7 @@ export const LogDetailSidebar = () => {
                           wrapLines={true}
                           className="custom-scrollbar"
                         >
-                          {formatJSON(selectedLog.body)}
+                          {formatJSON(log.body)}
                         </SyntaxHighlighter>
                       )}
                     </div>
