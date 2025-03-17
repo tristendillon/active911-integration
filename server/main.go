@@ -73,7 +73,10 @@ func main() {
 
 	// Initialize router
 	r := mux.NewRouter()
-
+	r.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	
 	// Setup middlewares
 	loggerMiddleware := middleware.NewLogger(logger, func(logEntry models.LogEntry) error {
 		return store.SaveLog(context.Background(), logEntry)

@@ -27,7 +27,7 @@ export function useAlerts(password: string) {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?password=${password}`, {
         headers: {
-          'ngrok-skip-browser-warning': '1',
+          'ngrok-skip-browser-warning': 'true',
         },
       });
       const data = await response.json();
