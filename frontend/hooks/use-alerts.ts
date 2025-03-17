@@ -25,7 +25,11 @@ export function useAlerts(password: string) {
 
   const fetchAlerts = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?password=${password}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?password=${password}`, {
+        headers: {
+          'ngrok-skip-browser-warning': '1',
+        },
+      });
       const data = await response.json();
 
       if (isMountedRef.current) {
@@ -57,7 +61,6 @@ export function useAlerts(password: string) {
     cleanupWebSocket();
 
     const websocket = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/alerts?password=${password}`);
-
     websocket.onopen = () => {
       if (isMountedRef.current) {
         setIsConnected(true);

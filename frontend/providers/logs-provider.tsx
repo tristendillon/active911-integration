@@ -166,6 +166,7 @@ export const LogsProvider: React.FC<LogsProviderProps> = ({ children, password }
       const response = await fetch(url, {
         headers: {
           Accept: 'application/json',
+          'ngrok-skip-browser-warning': '1',
         },
       });
 
