@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/user/alerting/server/internal/logging"
@@ -91,19 +92,88 @@ func GetAuthInfoFromContext(ctx context.Context) (AuthInfo, bool) {
 	return AuthInfo{}, false
 }
 
-// RedactAlertData removes sensitive information from alerts for unauthenticated users
-func RedactAlertData(alert *models.Alert, keepCoordinates bool) {
-	// Keep fields needed for minimal display
-	if !keepCoordinates {
-		alert.Alert.Lat = 0
-		alert.Alert.Lon = 0
+var alwaysRedactedFields = []string{
+	"Details",
+}
+
+var redactedFields = []string{
+	"CrossStreet",
+	"MapAddress",
+	"Place",
+	"DispatchCoords",
+}
+
+var redactedDescriptors = []string{
+	"med",
+}
+
+func RedactAlertData(alert *models.Alert, keepCoordinates bool) *models.Alert {
+	// Create a deep copy of the alert to avoid modifying the original
+	redactedAlert := *alert // Copy the top level struct
+
+	// First determine if we need to redact sensitive fields based on the description
+	needsRedaction := false
+
+	// Check if Description is nil before dereferencing
+	if alert.Alert.Description != nil {
+		descriptor := *alert.Alert.Description
+		for _, redactedDescriptor := range redactedDescriptors {
+			if strings.Contains(strings.ToLower(descriptor), redactedDescriptor) {
+				needsRedaction = true
+				break
+			}
+		}
 	}
 
-	// Redact sensitive information
-	alert.Alert.MapCode = nil
-	alert.Alert.Units = nil
-	alert.Alert.Unit = nil
-	alert.Alert.Source = nil
+	// Prepare the reflection to access fields
+	alertValue := reflect.ValueOf(&redactedAlert.Alert).Elem()
+
+	// Always redact the fields in alwaysRedactedFields regardless of description
+	for _, field := range alwaysRedactedFields {
+		fieldValue := alertValue.FieldByName(field)
+		if fieldValue.IsValid() && fieldValue.CanSet() {
+			// Handle different types of fields
+			switch fieldValue.Kind() {
+			case reflect.String:
+				fieldValue.SetString("[Redacted]")
+			case reflect.Ptr:
+				// Handle string pointers
+				if !fieldValue.IsNil() && fieldValue.Elem().Kind() == reflect.String {
+					fieldValue.Elem().SetString("[Redacted]")
+				}
+			}
+		}
+	}
+
+	// If no further redaction needed based on description, return the alert with just always-redacted fields
+	if !needsRedaction {
+		return &redactedAlert
+	}
+
+	// If we reach here, full redaction is needed
+	if !keepCoordinates {
+		redactedAlert.Alert.Lat = 0
+		redactedAlert.Alert.Lon = 0
+	}
+
+	// Loop through fields that need redaction based on description
+	for _, field := range redactedFields {
+		fieldValue := alertValue.FieldByName(field)
+		if fieldValue.IsValid() && fieldValue.CanSet() {
+			// Handle different types of fields
+			switch fieldValue.Kind() {
+			case reflect.String:
+				fieldValue.SetString("[Redacted]")
+			case reflect.Ptr:
+				// Handle string pointers
+				if !fieldValue.IsNil() && fieldValue.Elem().Kind() == reflect.String {
+					fieldValue.Elem().SetString("[Redacted]")
+				}
+			}
+		}
+	}
+
+	return &redactedAlert
 }
 
 // Auth middleware adds authentication info to the request context

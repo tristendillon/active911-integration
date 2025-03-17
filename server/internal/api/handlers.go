@@ -91,11 +91,16 @@ func (h *Handler) GetAlerts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Redact sensitive information if not authenticated
+	redactedAlerts := make([]models.Alert, len(alerts))
 	if !authInfo.Authenticated {
 		for i := range alerts {
-			auth.RedactAlertData(&alerts[i], false)
+			redactedAlert := auth.RedactAlertData(&alerts[i], false)
+			redactedAlerts[i] = *redactedAlert
 		}
 		h.logger.Info("Returning redacted alerts (unauthenticated access)")
+	} else {
+		// Just copy the alerts if authenticated
+		copy(redactedAlerts, alerts)
 	}
 
 	// Calculate next/prev pagination offsets
@@ -114,8 +119,8 @@ func (h *Handler) GetAlerts(w http.ResponseWriter, r *http.Request) {
 
 	// Build response
 	response := models.PaginatedResponse{
-		Data:   alerts,
-		Count:  len(alerts),
+		Data:   redactedAlerts,
+		Count:  len(redactedAlerts),
 		Total:  total,
 		Limit:  limit,
 		Offset: offset,
@@ -308,13 +313,19 @@ func (h *Handler) GetAlert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Prepare the response - either original or redacted
+	var responseAlert *models.Alert
+
 	// Redact sensitive information if not authenticated
 	if !authInfo.Authenticated {
-		auth.RedactAlertData(&alert, false)
+		responseAlert = auth.RedactAlertData(&alert, false)
 		h.logger.Infof("Returning redacted alert %s (unauthenticated access)", id)
+	} else {
+		// Use the original alert if authenticated
+		responseAlert = &alert
 	}
 
-	h.respondWithJSON(w, http.StatusOK, alert)
+	h.respondWithJSON(w, http.StatusOK, responseAlert)
 }
 
 // DeleteAlert handles DELETE /alerts/{id} requests
