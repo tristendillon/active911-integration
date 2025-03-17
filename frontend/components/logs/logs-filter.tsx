@@ -34,6 +34,8 @@ export const LogsFilter = () => {
   const websocketMessageTypes = ['new_alert', 'alert_deleted', 'heartbeat', 'ping', 'pong', 'unknown'];
   const directions = ['incoming', 'outgoing'];
 
+  console.log(activeTab);
+
   return (
     <Card className="mb-4">
       <CardContent className="pt-4">

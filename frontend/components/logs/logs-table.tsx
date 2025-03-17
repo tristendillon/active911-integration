@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useLogs, RequestLog } from '@/providers/logs-provider';
+import { useLogs } from '@/providers/logs-provider';
 import { formatDistanceToNow } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import InfiniteScroll from 'react-infinite-scroll-component';

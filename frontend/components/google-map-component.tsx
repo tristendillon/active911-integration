@@ -1,6 +1,6 @@
 'use client';
 
-import { GoogleMap, MarkerF, DirectionsService, DirectionsRenderer } from '@react-google-maps/api';
+import { GoogleMap, MarkerF, DirectionsRenderer } from '@react-google-maps/api';
 import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useState } from 'react';
 import { useMap } from '@/providers/map-provider';

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Header from './header';
 import NewAlertPopover from './alert-popover/new-alert-popover';
 import { GoogleMapComponent } from './google-map-component';

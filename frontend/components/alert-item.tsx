@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from './ui/badge';
@@ -10,7 +10,7 @@ interface AlertItemProps {
 }
 
 export default function AlertItem({ units, alert }: AlertItemProps) {
-  const recievedAt = new Date(alert.alert.stamp * 1000);
+  const recievedAt = useMemo(() => new Date(alert.alert.stamp * 1000), [alert.alert.stamp]);
   const [formatedRecievedAt, setFormatedRecievedAt] = useState(formatDistanceToNow(recievedAt, { addSuffix: true }));
 
   useEffect(() => {

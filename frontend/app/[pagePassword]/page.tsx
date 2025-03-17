@@ -107,14 +107,12 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   // Default values if validation fails
   const defaultLocation = '39.204728120622434,-96.58484741069773';
   const defaultPageGroups = 'E1,HZMT1,BAT1';
-  const defaultSound = 'on';
   let validLocation = defaultLocation;
   let validPageGroups = defaultPageGroups;
-  let validSound = defaultSound;
+
   if (!inputError) {
     validLocation = inputData.location;
     validPageGroups = inputData.pageGroups || defaultPageGroups;
-    validSound = inputData.sound || defaultSound;
   } else {
     console.error('Input validation error:', inputError.errors);
   }

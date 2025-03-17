@@ -99,6 +99,7 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
         if (playPromise !== undefined) {
           playPromise.catch((error) => {
             console.log('Auto-play was prevented. User interaction is required to play audio.');
+            console.error(error);
             // We don't need to show the error as it's expected behavior in browsers
           });
         }

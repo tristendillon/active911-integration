@@ -1,9 +1,8 @@
 'use client';
 
 import type { Alert } from '@/lib/types';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { GoogleMapComponent } from '../google-map-component';
-import { Marker, MarkerF } from '@react-google-maps/api';
 
 interface NewAlertMapProps {
   alert: Alert;

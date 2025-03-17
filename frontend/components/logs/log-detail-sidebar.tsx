@@ -38,27 +38,13 @@ export const LogDetailSidebar = () => {
     isLoading: logLoading,
   } = useSWR<RequestLog>(selectedLog?.id ? `${process.env.NEXT_PUBLIC_API_URL}/logs/${selectedLog.id}?password=${password}` : null, fetcher);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formatJSON = (data: any) => {
     try {
       return typeof data === 'string' ? JSON.stringify(JSON.parse(data), null, 2) : JSON.stringify(data, null, 2);
     } catch (e) {
+      console.error(e);
       return typeof data === 'string' ? data : JSON.stringify(data);
-    }
-  };
-
-  // Helper to safely get header values
-  const getHeaderValue = (headers: any, key: string): string => {
-    try {
-      if (typeof headers === 'object' && headers !== null) {
-        return headers[key] || '';
-      }
-      if (typeof headers === 'string') {
-        const parsed = JSON.parse(headers);
-        return parsed[key] || '';
-      }
-      return '';
-    } catch (e) {
-      return '';
     }
   };
 
@@ -76,6 +62,7 @@ export const LogDetailSidebar = () => {
         </div>
       );
     } catch (e) {
+      console.error(e);
       return timestamp;
     }
   };
