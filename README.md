@@ -52,4 +52,6 @@ From the root directory:
 
 - Frontend: http://localhost:3000
 - API: http://localhost:8080
-- PostgreSQL: localhost:5432
+- PostgreSQL:
+  - localhost:5432
+  - host.docker.internal (in a dev container)
