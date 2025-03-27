@@ -184,7 +184,7 @@ func (a *Authenticator) Auth(next http.Handler) http.Handler {
 
 		// Set authentication info in context
 		ctx := context.WithValue(r.Context(), AuthInfoKey, authInfo)
-
+		a.logger.Infof("Authentication info: %+v", authInfo)
 		// Call the next handler with the updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

@@ -74,17 +74,6 @@ func (c *Client) ReadPump(messageHandler MessageHandler) {
 			c.logger.Error(err, "Failed to send protocol pong")
 		}
 
-		// Log the ping/pong at protocol level
-		if c.hub != nil && c.hub.logMessageCallback != nil {
-			pingResponse := models.WebSocketMessage{
-				Type:    "protocol-pong",
-				Content: "ping-response",
-				ID:      uuid.New().String(),
-				Time:    time.Now(),
-			}
-			c.hub.logMessageCallback(pingResponse, "server", c.id)
-		}
-
 		return nil
 	})
 
@@ -111,12 +100,14 @@ func (c *Client) ReadPump(messageHandler MessageHandler) {
 			}
 		}
 
-		// Log the incoming message
-		c.logger.Debugf("Received %s message from client", message.Type)
+		// Log the incoming message (except ping messages)
+		if message.Type != "ping" {
+			c.logger.Debugf("Received %s message from client", message.Type)
 
-		// Log through the callback
-		if c.hub != nil && c.hub.logMessageCallback != nil {
-			c.hub.logMessageCallback(message, "client", c.id)
+			// Log through the callback (except ping messages)
+			if c.hub != nil && c.hub.logMessageCallback != nil {
+				c.hub.logMessageCallback(message, "client", c.id)
+			}
 		}
 
 		// Handle ping messages at application level
@@ -126,12 +117,6 @@ func (c *Client) ReadPump(messageHandler MessageHandler) {
 				Content: map[string]interface{}{"timestamp": time.Now().Unix()},
 				ID:      uuid.New().String(),
 				Time:    time.Now(),
-			}
-
-			// Log the pong response
-			if c.hub != nil && c.hub.logMessageCallback != nil {
-				c.logger.Debugf("Logging pong message from client %s", c.id)
-				c.hub.logMessageCallback(pongMessage, "server", c.id)
 			}
 
 			c.send <- pongMessage
@@ -223,11 +208,6 @@ func (c *Client) WritePump() {
 				Time:    time.Now(),
 			}
 
-			// Log the heartbeat
-			if c.hub != nil && c.hub.logMessageCallback != nil {
-				c.hub.logMessageCallback(heartbeat, "server", c.id)
-			}
-
 			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
 				c.logger.Error(err, "Failed to set write deadline for heartbeat")
 				return
@@ -262,12 +242,15 @@ func (c *Client) SendMessage(messageType string, content interface{}) {
 		Time:    time.Now(),
 	}
 
-	// Log the outgoing message
-	c.logger.Debugf("Sending %s message to client", messageType)
+	// Only log non-ping/pong/heartbeat messages
+	if messageType != "ping" && messageType != "pong" && messageType != "heartbeat" {
+		// Log the outgoing message
+		c.logger.Debugf("Sending %s message to client", messageType)
 
-	// Log through the callback
-	if c.hub != nil && c.hub.logMessageCallback != nil {
-		c.hub.logMessageCallback(message, "server", c.id)
+		// Log through the callback
+		if c.hub != nil && c.hub.logMessageCallback != nil {
+			c.hub.logMessageCallback(message, "server", c.id)
+		}
 	}
 
 	c.send <- message

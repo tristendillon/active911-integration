@@ -29,7 +29,7 @@ func NewStorage(db *sql.DB) *Storage {
 
 // EnsureSchema ensures that the database schema exists
 func (s *Storage) EnsureSchema(ctx context.Context) error {
-	s.logger.Info().Msg("Checking database schema...")
+	log.Info().Msg("Checking database schema...")
 
 	// Create extensions
 	_, err := s.db.ExecContext(ctx, "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
@@ -53,13 +53,13 @@ func (s *Storage) EnsureSchema(ctx context.Context) error {
 
 	// Create logs table if it doesn't exist
 	if !logsExists {
-		s.logger.Info().Msg("Creating logs table...")
+		log.Info().Msg("Creating logs table...")
 		if err := s.createLogsTable(ctx); err != nil {
 			return err
 		}
 	}
 
-	s.logger.Info().Msg("Database schema is ready")
+	log.Info().Msg("Database schema is ready")
 	return nil
 }
 
@@ -323,7 +323,7 @@ func (s *Storage) GetAlerts(ctx context.Context, status string, limit int, offse
 	}
 	defer func() {
 		if closeErr := rows.Close(); closeErr != nil {
-			s.logger.Error().Err(closeErr).Msg("Error closing rows")
+			log.Error().Err(closeErr).Msg("Error closing rows")
 		}
 	}()
 

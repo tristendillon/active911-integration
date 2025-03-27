@@ -1,148 +1,61 @@
-import Dashboard from '@/components/dashboard';
-import { DashboardProvider } from '@/providers/dashboard-provider';
-import { MapProvider } from '@/providers/map-provider';
-import { WeatherProvider } from '@/providers/weather-provider';
 import React from 'react';
-import { z } from 'zod';
+import Link from 'next/link';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 
 interface DashboardPageProps {
   params: Promise<{
     pagePassword: string;
   }>;
-  searchParams: Promise<{
-    location: string;
-    pageGroups: string;
-    sound: string;
-  }>;
 }
 
-const inputSchema = z
-  .object({
-    location: z.string().refine(
-      (location) => {
-        const locationArray = location.split(',');
+const stationMap = {
+  '1': {
+    name: 'Headquarters',
+  },
+  '2': {
+    name: 'Station 2',
+  },
+  '3': {
+    name: 'Station 3',
+  },
+  '4': {
+    name: 'Station 4',
+  },
+  '5': {
+    name: 'Station 5',
+  },
+} as const;
 
-        if (locationArray.length !== 2) {
-          return false;
-        }
-
-        const latitude = parseFloat(locationArray[0]);
-        const longitude = parseFloat(locationArray[1]);
-
-        if (isNaN(latitude) || isNaN(longitude)) {
-          return false;
-        }
-
-        return true;
-      },
-      {
-        message: "Invalid location format. Must be in 'latitude,longitude' format.",
-      }
-    ),
-    pageGroups: z.string().refine(
-      (pageGroups) => {
-        if (!pageGroups) {
-          return true; // Allow empty string for no page groups
-        }
-
-        const groups = pageGroups.split(',');
-        return groups.every((group) => /^[a-zA-Z0-9]+$/.test(group.trim()));
-      },
-      {
-        message: 'Invalid page groups format. Must be a comma-separated list of strings.',
-      }
-    ),
-    pagePassword: z.string(),
-    sound: z.string().optional(),
-  })
-  .superRefine((val, ctx) => {
-    const locationArray = val.location.split(',');
-    const latitude = parseFloat(locationArray[0]);
-    const longitude = parseFloat(locationArray[1]);
-
-    if (latitude < -90) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Latitude must be greater than or equal to -90.',
-        path: ['location'],
-      });
-    }
-
-    if (latitude > 90) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Latitude must be less than or equal to 90.',
-        path: ['location'],
-      });
-    }
-
-    if (longitude < -180) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Longitude must be greater than or equal to -180.',
-        path: ['location'],
-      });
-    }
-
-    if (longitude > 180) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Longitude must be less than or equal to 180.',
-        path: ['location'],
-      });
-    }
-  });
-
-export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
+export default async function StationSelectionPage({ params }: DashboardPageProps) {
   const { pagePassword } = await params;
-  const { location, pageGroups, sound } = await searchParams;
-
-  const { error: inputError, data: inputData } = inputSchema.safeParse({
-    location,
-    pageGroups,
-    pagePassword,
-    sound,
-  });
-
-  // Default values if validation fails
-  const defaultLocation = '39.204728120622434,-96.58484741069773';
-  const defaultPageGroups = 'E1,HZMT1,BAT1';
-  let validLocation = defaultLocation;
-  let validPageGroups = defaultPageGroups;
-
-  if (!inputError) {
-    validLocation = inputData.location;
-    validPageGroups = inputData.pageGroups || defaultPageGroups;
-  } else {
-    console.error('Input validation error:', inputError.errors);
-  }
-
-  const locationArray = validLocation.split(',');
-  const latitude = locationArray[0];
-  const longitude = locationArray[1];
-  const pageGroupsArray = validPageGroups.split(',');
 
   if (pagePassword !== process.env.PAGE_PASSWORD) {
     return <div>Invalid password</div>;
   }
 
-  const latCenter = parseFloat(latitude);
-  const lngCenter = parseFloat(longitude);
-
-  const center = {
-    lat: latCenter,
-    lng: lngCenter,
-  };
-
   return (
-    <MapProvider>
-      <main className="h-full w-full">
-        <WeatherProvider center={center}>
-          <DashboardProvider password={pagePassword} units={pageGroupsArray} center={center} sound={sound}>
-            <Dashboard />
-          </DashboardProvider>
-        </WeatherProvider>
-      </main>
-    </MapProvider>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+      <Card className="max-w-md w-full">
+        <CardHeader>
+          <CardTitle className="text-center">Select a Station</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Object.entries(stationMap).map(([id, station]) => (
+              <Link
+                key={id}
+                href={`/${pagePassword}/${id}`}
+                className="flex w-full justify-center items-center py-2 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-md transition-colors h-10"
+              >
+                {station.name}
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+        <CardFooter>
+          <p className="text-center text-sm text-muted-foreground w-full">Select a station to view its dashboard</p>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }

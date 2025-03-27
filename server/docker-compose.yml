@@ -1,5 +1,6 @@
 services:
   api:
+    image: commfd.azurecr.io/alerting-api:latest
     build:
       context: .
       dockerfile: Dockerfile

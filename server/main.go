@@ -76,7 +76,7 @@ func main() {
 	r.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	
+
 	// Setup middlewares
 	loggerMiddleware := middleware.NewLogger(logger, func(logEntry models.LogEntry) error {
 		return store.SaveLog(context.Background(), logEntry)
@@ -174,16 +174,29 @@ func connectToDatabase(cfg *config.Config, logger *logging.Logger) (*sql.DB, err
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	// Ping database to verify connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	// Try to ping database up to 5 times to verify connection
+	const maxRetries = 5
+	var lastErr error
 
-	if err := db.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+	for i := 0; i < maxRetries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		lastErr = db.PingContext(ctx)
+		cancel()
+
+		if lastErr == nil {
+			logger.Infof("Connected to database successfully after %d attempt(s)", i+1)
+			return db, nil
+		}
+
+		logger.Warnf("Database connection attempt %d/%d failed: %v", i+1, maxRetries, lastErr)
+
+		if i < maxRetries-1 {
+			// Wait before retrying, with exponential backoff
+			time.Sleep(time.Duration(1<<uint(i)) * time.Second)
+		}
 	}
 
-	logger.Info("Connected to database successfully")
-	return db, nil
+	return nil, fmt.Errorf("failed to ping database after %d attempts: %w", maxRetries, lastErr)
 }
 
 // saveWebSocketMessage logs a WebSocket message to the database
