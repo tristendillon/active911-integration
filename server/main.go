@@ -163,6 +163,8 @@ func connectToDatabase(cfg *config.Config, logger *logging.Logger) (*sql.DB, err
 		)
 	}
 
+	logger.Infof("Connecting to database: %s", dsn)
+
 	// Connect to database
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
@@ -178,7 +180,7 @@ func connectToDatabase(cfg *config.Config, logger *logging.Logger) (*sql.DB, err
 	const maxRetries = 5
 	var lastErr error
 
-	for i := 0; i < maxRetries; i++ {
+	for i := range maxRetries {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		lastErr = db.PingContext(ctx)
 		cancel()
