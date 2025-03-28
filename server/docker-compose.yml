@@ -8,18 +8,20 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - .env
-    depends_on:
-      alerting-db:
-        condition: service_healthy
+      - .env.prod
+    # depends_on:
+    #   alerting-db:
+    #     condition: service_healthy
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
+    # networks:
+    #   - default
 
   alerting-db:
     image: postgres:16
     container_name: alerting-db
-    network_mode: "host"
+    # network_mode: "host" enable for dev container
     ports:
       - "5432:5432"
     environment:
@@ -36,6 +38,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    # networks:
+    #   - default
 
 volumes:
   postgres_data:
@@ -43,3 +47,7 @@ volumes:
     driver: local
     # This makes the volume "anonymous" so it will be automatically removed when the container is removed
     external: false
+
+# networks:
+#   default:
+    # name: alerting-network

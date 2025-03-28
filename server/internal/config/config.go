@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -132,7 +133,7 @@ func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
 
 func getSliceEnv(key string, defaultValue []string) []string {
 	if value, exists := os.LookupEnv(key); exists && value != "" {
-		return []string{value} // For simplicity; could be enhanced to split by comma
+		return strings.Split(value, ",")
 	}
 	return defaultValue
 }

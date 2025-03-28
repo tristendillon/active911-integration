@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"time"
 
+	"slices"
+
 	"github.com/google/uuid"
 	"github.com/user/alerting/server/internal/logging"
 	"github.com/user/alerting/server/internal/models"
@@ -153,10 +155,13 @@ func (l *Logger) Logging(next http.Handler) http.Handler {
 func CORS(allowedOrigins []string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, ngrok-skip-browser-warning")
-			// Continue to the next middleware/handler
+			origin := r.Header.Get("Origin")
+			if slices.Contains(allowedOrigins, origin) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, ngrok-skip-browser-warning")
+			}
+
 			next.ServeHTTP(w, r)
 		})
 	}

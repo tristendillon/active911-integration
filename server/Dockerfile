@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /src
 
@@ -29,14 +29,14 @@ WORKDIR /app
 # Copy the built server binary
 COPY --from=builder /bin/server /app/server
 
-# Copy .env file (ensure it exists at build time)
-COPY .env /app/.env
-
 # Expose the application port
 EXPOSE 8080
 
 # Set environment variables
 ENV GIN_MODE=release
+
+# Add diagnostics logging comment
+# Please use https://aka.ms/linux-diagnostics to enable logging to see container logs here.
 
 # Run the application
 CMD ["/app/server"]
