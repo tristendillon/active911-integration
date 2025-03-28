@@ -25,7 +25,10 @@ jobs:
         registry: https://commfd.azurecr.io/
         username: ${{ secrets.AZURE_USERNAME }}
         password: ${{ secrets.AZURE_PASSWORD }}
-
+        
+    - name: Create .env.prod file
+      run: echo "${{ secrets.PROD_ENV }}" > .env.prod
+      
     - name: Build and push container image to registry
       uses: docker/build-push-action@v3
       with:
