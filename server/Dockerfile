@@ -6,8 +6,11 @@ WORKDIR /src
 # Install dependencies
 RUN apk add --no-cache git
 
+COPY go.mod ./
+RUN go mod tidy
+
 # Copy go.mod and go.sum files
-COPY go.mod go.sum ./
+COPY go.sum ./
 
 # Download dependencies
 RUN go mod download
