@@ -23,14 +23,14 @@ jobs:
       uses: docker/login-action@v2
       with:
         registry: https://commfd.azurecr.io/
-        username: ${{ secrets.AzureAppService_ContainerUsername_71e7b7ea7d3747f28927edddbd353fde }}
-        password: ${{ secrets.AzureAppService_ContainerPassword_20768d2e6d504ccaa2e3dfff86321417 }}
+        username: ${{ secrets.AZURE_USERNAME }}
+        password: ${{ secrets.AZURE_PASSWORD }}
 
     - name: Build and push container image to registry
       uses: docker/build-push-action@v3
       with:
         push: true
-        tags: commfd.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_71e7b7ea7d3747f28927edddbd353fde }}/alerting-api:${{ github.sha }}
+        tags: commfd.azurecr.io/${{ secrets.AZURE_USERNAME }}/alerting-api:${{ github.sha }}
         file: ./server/Dockerfile
 
   deploy:
@@ -48,4 +48,4 @@ jobs:
         app-name: 'alerting-dashboard'
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_51695e60cb0b439cb278957c2a9f6386 }}
-        images: 'commfd.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_71e7b7ea7d3747f28927edddbd353fde }}/alerting-api:${{ github.sha }}'
+        images: 'commfd.azurecr.io/${{ secrets.AZURE_USERNAME }}/alerting-api:${{ github.sha }}'
