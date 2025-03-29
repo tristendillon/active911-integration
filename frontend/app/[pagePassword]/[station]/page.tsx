@@ -3,7 +3,6 @@ import { DashboardProvider } from '@/providers/dashboard-provider';
 import { MapProvider } from '@/providers/map-provider';
 import { WeatherProvider } from '@/providers/weather-provider';
 import React from 'react';
-import { z } from 'zod';
 
 interface DashboardPageProps {
   params: Promise<{
