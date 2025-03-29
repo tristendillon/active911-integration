@@ -6,31 +6,26 @@ import NewAlertPopover from './alert-popover/new-alert-popover';
 import { GoogleMapComponent } from './google-map-component';
 import { useDashboard } from '@/providers/dashboard-provider';
 import Sidebar from './sidebar';
-import { WeatherAlertBanner } from './weather/weather-alert-banner';
-import { useWeather } from '@/providers/weather-provider';
 export default function Dashboard() {
-  const { center, isNewAlert, sound } = useDashboard();
-  const { weather, loading } = useWeather();
+  const { sound, map } = useDashboard();
   return (
     <>
       <NewAlertPopover sound={sound} />
 
-      {!isNewAlert && (
-        <>
+      <div className="block lg:hidden">
+        <Header />
+      </div>
+      <div className="h-full w-full flex flex-col lg:flex-row">
+        <div className="w-full bg-secondary grid grid-cols-1 md:grid-cols-5 h-screen overflow-hidden">
+          <Sidebar />
+        </div>
+        <div className="w-full h-full hidden lg:block">
           <Header />
-          <div className="h-full w-full flex">
-            <Sidebar />
-            <GoogleMapComponent center={center} zoom={18} markers={[center]} />
+          <div className="w-full h-[50vh] lg:h-[calc(100vh-150px)]">
+            <GoogleMapComponent center={map.center} zoom={map.zoom} markers={map.markers} />
           </div>
-          {!loading && weather?.alerts && weather.alerts.length > 0 && (
-            <div className="absolute bottom-1 right-1 flex flex-col gap-2">
-              {weather.alerts.map((weatherAlert) => (
-                <WeatherAlertBanner key={weatherAlert.id} weatherAlert={weatherAlert} />
-              ))}
-            </div>
-          )}
-        </>
-      )}
+        </div>
+      </div>
     </>
   );
 }

@@ -31,12 +31,11 @@ export function WeatherAlertBanner({ weatherAlert }: WeatherAlertBannerProps) {
       <div className={`rounded-lg shadow-lg px-4 py-3 ${getBgColor(weatherAlert.event)}`}>
         <div className="flex flex-col text-white">
           <div className="font-bold text-lg">{weatherAlert.event}</div>
-          <div className="flex flex-col sm:flex-row text-sm mt-1 space-y-1 sm:space-y-0 sm:space-x-2">
+          <div className="flex flex-col text-sm mt-1 space-y-1">
             <div className="flex items-center">
               <span className="font-medium">From:</span>
               <span className="ml-1">{formatDate(weatherAlert.onset)}</span>
             </div>
-            <div className="hidden sm:block">|</div>
             <div className="flex items-center">
               <span className="font-medium">Until:</span>
               <span className="ml-1">{formatDate(weatherAlert.ends)}</span>

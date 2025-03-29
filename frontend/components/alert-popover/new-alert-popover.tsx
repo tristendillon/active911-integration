@@ -1,4 +1,3 @@
-'use client';
 
 import type { Alert } from '@/lib/types';
 import { useDashboard } from '@/providers/dashboard-provider';
@@ -8,152 +7,74 @@ import { AnimatePresence, motion } from 'motion/react';
 import NewAlertHeader from './new-alert-header';
 import NewAlertSidebar from './new-alert-sidebar';
 import NewAlertMap from './new-alert-map';
+import { useAlertAudio } from '@/hooks/use-alert-audio';
+import AlertItem from '../alert-item';
 
-const MAX_NEW_ALERT_TIME = 180 * 1000; // 5 seconds for alert display
-const ANIMATION_DELAY = 1.5 * 1000; // 1.5 seconds delay before setting isNewAlert
+const MAX_NEW_ALERT_TIME = 180 * 1000; // 3 minutes
+const ANIMATION_DELAY = 1500; // 1.5 seconds
 
 interface NewAlertPopoverProps {
   sound?: boolean;
 }
+
 
 export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) {
   const [currentAlert, setCurrentAlert] = useState<Alert | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [audioInitialized, setAudioInitialized] = useState(false);
+  const { playSound, stopSound } = useAlertAudio(sound);
 
-  const {
-    setIsNewAlert,
-    center,
-    units, // Get units from dashboard context
-  } = useDashboard();
-  // Check if the alert is relevant for the current user's units
+  const { setIsNewAlert, map, units, alerts } = useDashboard();
 
+  /** Dismiss the alert */
   const dismissAlert = useCallback(() => {
     if (!currentAlert) return;
 
-    // Start exit animation
     setIsAnimating(false);
-
-    // First update isNewAlert to show dashboard behind the animation
     setIsNewAlert(false);
+    stopSound();
 
-    // Stop the alert sound
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-
-    // Then schedule clearing the alert after the animation finishes
     setTimeout(() => {
       setCurrentAlert(null);
-    }, 1000); // Slightly longer than animation to ensure it completes
-  }, [currentAlert, setIsNewAlert]);
+    }, 1000); // Allow animation to complete
+  }, [currentAlert, setIsNewAlert, stopSound]);
 
-  // Initialize audio element
-  useEffect(() => {
-    // Create audio element but don't autoplay it
-    if (sound) {
-      audioRef.current = new Audio('/alerts/new-alert.mp3');
-      audioRef.current.loop = true;
-
-      // Pre-load the audio file
-      audioRef.current.load();
-      setAudioInitialized(true);
-    } else {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      setAudioInitialized(false);
-    }
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, [sound]);
-
-  // Listen for new alerts
+  /** Handle new alert event */
   useEffect(() => {
     function handleNewAlert(newAlert: Alert) {
-      console.log('New alert received:', newAlert);
-
-      // Only process the alert if it's relevant to user's units
-
-      console.log('Alert is relevant for units:', units);
-
-      // Show the new alert immediately but don't update isNewAlert yet
       setCurrentAlert(newAlert);
       setIsAnimating(true);
 
-      // Play alert sound if initialized
-      if (audioRef.current && audioInitialized && sound) {
-        // Use a user interaction to play sound or show a button for the user to click
-        const playPromise = audioRef.current.play();
-
-        if (playPromise !== undefined) {
-          playPromise.catch((error) => {
-            console.log('Auto-play was prevented. User interaction is required to play audio.');
-            console.error(error);
-            // We don't need to show the error as it's expected behavior in browsers
-          });
-        }
-      }
+      stopSound(); // Ensure any existing audio stops
+      playSound(); // Start new alert sound
 
       // Delay setting isNewAlert to allow animation to complete
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-      }
-
       animationTimeoutRef.current = setTimeout(() => {
         setIsNewAlert(true);
       }, ANIMATION_DELAY);
     }
 
-    // Add event listener
     alertEmitter.on('new_alert', handleNewAlert);
 
-    // Cleanup function
     return () => {
       alertEmitter.off('new_alert', handleNewAlert);
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-      }
+      clearTimeout(animationTimeoutRef.current!);
+      stopSound();
     };
-  }, [setIsNewAlert, units, audioInitialized, sound]);
+  }, [setIsNewAlert, playSound, stopSound]);
 
-  // Handle auto-dismiss timeout
+  /** Auto-dismiss after timeout */
   useEffect(() => {
-    // If we have an alert, set up the timeout
     if (currentAlert && isAnimating) {
-      // Clear any existing timeout first
-      if (timeoutIdRef.current) {
-        clearTimeout(timeoutIdRef.current);
-        timeoutIdRef.current = null;
-      }
-
-      // Set new timeout
-      timeoutIdRef.current = setTimeout(() => {
-        dismissAlert();
-      }, MAX_NEW_ALERT_TIME);
-
-      // Cleanup function
-      return () => {
-        if (timeoutIdRef.current) {
-          clearTimeout(timeoutIdRef.current);
-          timeoutIdRef.current = null;
-        }
-      };
+      timeoutIdRef.current = setTimeout(dismissAlert, MAX_NEW_ALERT_TIME);
     }
+
+    return () => clearTimeout(timeoutIdRef.current!);
   }, [currentAlert, isAnimating, dismissAlert]);
 
-  // Don't render anything if there's no alert
   if (!currentAlert) return null;
+
   return (
     <AnimatePresence>
       {currentAlert && (
@@ -162,31 +83,23 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
           initial={{ y: '100%' }}
           animate={{ y: isAnimating ? 0 : '100%' }}
           exit={{ y: '100%' }}
-          transition={{
-            type: 'spring',
-            damping: 30,
-            stiffness: 200,
-            duration: 0.8,
-          }}
+          transition={{ type: 'spring', damping: 30, stiffness: 200 }}
         >
           <div className="bg-secondary h-full w-full flex flex-col">
-            {/* Header */}
             <NewAlertHeader
               alert={currentAlert}
               onDismiss={dismissAlert}
               autoCloseTime={MAX_NEW_ALERT_TIME / 1000}
-              onPlaySound={() => {
-                if (audioRef.current && sound) {
-                  audioRef.current.play().catch((err) => console.log('Error playing sound after user interaction:', err));
-                }
-              }}
             />
-
-            {/* Main content area with sidebar and map */}
-            <div className="flex-1 flex">
+            <div className="flex-1 flex flex-col md:flex-row">
               <NewAlertSidebar alert={currentAlert} units={units} />
-              <div className="flex-1 relative">
-                <NewAlertMap alert={currentAlert} center={center} />
+              <div className="h-[50vh] md:h-auto md:flex-1 relative">
+                <NewAlertMap alert={currentAlert} center={map.center} />
+                <div className="absolute w-1/2 bottom-2 right-2 bg-secondary/70 p-2 rounded-md">
+                  {alerts.data.filter((alert) => alert.alert.id !== currentAlert.alert.id).slice(0, 3).map((alert) => (
+                    <AlertItem key={alert.alert.id} alert={alert} units={units} />
+                  ))}
+                </div>
               </div>
             </div>
           </div>

@@ -15,7 +15,11 @@ interface DashboardContextType {
   };
   emitListener: (eventName: any, listener: (...args: any[]) => void) => void;
   units: string[];
-  center: google.maps.LatLngLiteral;
+  map: {
+    center: google.maps.LatLngLiteral;
+    zoom: number;
+    markers: google.maps.LatLngLiteral[];
+  };
   sound: boolean;
 }
 
@@ -23,21 +27,38 @@ const DashboardContext = createContext<DashboardContextType | undefined>(undefin
 
 interface DashboardProviderProps {
   children: React.ReactNode;
-  password: string;
-  units: string[];
+  password?: string;
+  units?: string[];
   center: google.maps.LatLngLiteral;
   sound: string;
+  markers?: google.maps.LatLngLiteral[];
+  zoom?: number;
 }
 
-export function DashboardProvider({ children, password, units, center, sound }: DashboardProviderProps) {
+export function DashboardProvider({ children, password, units, center, sound, markers, zoom }: DashboardProviderProps) {
   const [isNewAlert, setIsNewAlert] = useState(false);
   const { alerts, setAlerts, loading, emitListener, isConnected } = useAlerts(password);
+  if (markers && markers.length === 0) {
+    alerts.forEach((alert) => {
+      if (alert.alert.lat && alert.alert.lon) {
+        markers.push({
+          lat: alert.alert.lat,
+          lng: alert.alert.lon,
+        });
+      }
+    });
+  }
   return (
     <DashboardContext.Provider
       value={{
-        password,
+        password: password || '',
         isNewAlert,
         setIsNewAlert,
+        map: {
+          center,
+          zoom: zoom || 18,
+          markers: markers || [center],
+        },
         alerts: {
           loading,
           setData: setAlerts,
@@ -45,8 +66,7 @@ export function DashboardProvider({ children, password, units, center, sound }: 
         },
         sound: sound ? sound === 'on' : false,
         emitListener,
-        units,
-        center,
+        units: units || [],
       }}
     >
       {children}

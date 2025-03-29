@@ -13,7 +13,7 @@ const pingMessage = {
   type: 'ping',
 };
 
-export function useAlerts(password: string) {
+export function useAlerts(password?: string) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
@@ -25,7 +25,8 @@ export function useAlerts(password: string) {
 
   const fetchAlerts = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?password=${password}`, {
+      const queryParams = password ? `?password=${password}` : '';
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts${queryParams}`, {
         headers: {
           'ngrok-skip-browser-warning': 'true',
         },
@@ -59,8 +60,8 @@ export function useAlerts(password: string) {
   const connectWebSocket = () => {
     // First clean up any existing connection
     cleanupWebSocket();
-
-    const websocket = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/alerts?password=${password}`);
+    const queryParams = password ? `?password=${password}` : '';
+    const websocket = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/alerts${queryParams}`);
     websocket.onopen = () => {
       if (isMountedRef.current) {
         setIsConnected(true);

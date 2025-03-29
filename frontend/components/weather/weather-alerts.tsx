@@ -3,7 +3,6 @@
 import { useWeather } from '@/providers/weather-provider';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { format } from 'date-fns';
 import Autoplay from 'embla-carousel-autoplay';
 import { useEffect, useRef, useState } from 'react';
 import { LoadingWeatherAlerts } from './loading-weather-alerts';
@@ -117,39 +116,31 @@ export default function WeatherAlerts() {
   const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
   return (
-    <div className="p-4 h-full w-full">
+    <div className="p-2 h-full w-full overflow-hidden flex flex-col">
       {loading && <LoadingWeatherAlerts />}
       {!loading && weather?.alerts?.length === 0 && <NoWeatherAlerts />}
       {!loading && weather?.alerts && weather.alerts.length > 0 && (
-        <div className="w-full flex items-center gap-2 justify-end">
+        <div className="w-full flex items-center gap-2 justify-end flex-shrink-0">
           <CommandShortcut className="text-sm">{formattedTime}</CommandShortcut>
         </div>
       )}
       {!loading && weather?.alerts && weather.alerts.length > 0 && (
-        <Carousel setApi={setApi} className="flex flex-col w-full h-full pb-5" plugins={[plugin.current]}>
+        <Carousel setApi={setApi} className="flex flex-col w-full h-full overflow-hidden flex-grow" plugins={[plugin.current]}>
           <CarouselContent className="flex h-full">
             {weather.alerts.map((alert, alertIndex) => (
               <CarouselItem key={alert.id} className="h-full">
-                <Card className="flex flex-col h-full">
-                  <CardHeader className="flex-shrink-0">
+                <Card className="flex flex-col h-full overflow-hidden py-0 md:py-2 lg:py-4 gap-2 md:gap-4 lg:gap-6">
+                  <CardHeader className="flex-shrink-0 p-2">
                     <div className="flex justify-between items-start">
-                      <CardTitle>{alert.event}</CardTitle>
+                      <CardTitle className="text-sm sm:text-base">{alert.event}</CardTitle>
                     </div>
-                    <CardDescription>{alert.headline}</CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">{alert.headline}</CardDescription>
                   </CardHeader>
-                  <CardContent className="flex-grow flex flex-col h-full overflow-hidden">
-                    <div className="flex flex-col h-full">
-                      <div className="text-sm flex-shrink-0">
-                        <span className="font-semibold">Starts: </span>
-                        {format(new Date(alert.onset), 'PPp')}
-                      </div>
-                      <div className="text-sm flex-shrink-0">
-                        <span className="font-semibold">Ends: </span>
-                        {format(new Date(alert.ends), 'PPp')}
-                      </div>
+                  <CardContent className="flex-grow flex flex-col p-2 overflow-hidden">
+                    <div className="flex flex-col h-full overflow-hidden">
                       <div
                         id="auto-scroll"
-                        className="flex flex-col gap-2 mt-4 text-sm overflow-y-hidden flex-grow"
+                        className="flex flex-col gap-1 sm:gap-2 mt-2 overflow-y-hidden flex-grow"
                         ref={(el) => {
                           scrollContainerRefs.current[alertIndex] = el;
                         }}
@@ -168,7 +159,7 @@ export default function WeatherAlerts() {
               </CarouselItem>
             ))}
           </CarouselContent>
-          <div className="flex justify-center gap-2 mt-4">
+          <div className="flex justify-center gap-2 mt-2 flex-shrink-0">
             {weather.alerts.map((_, index) => (
               <div key={index} className={`h-2 w-2 rounded-full transition-colors ${current === index ? 'bg-primary' : 'bg-primary/30'}`} />
             ))}
