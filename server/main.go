@@ -39,6 +39,23 @@ func main() {
 
 	// Setup logger
 	logger := logging.New(cfg.Logging.Level, cfg.Logging.Format)
+	logger.Info("Config")
+	logger.Infof("AUTH: %v", cfg.Auth.APIPassword)
+	logger.Infof("HOST: %v", cfg.Database.Host)
+	logger.Infof("NAME: %v", cfg.Database.Name)
+	logger.Infof("USER: %v", cfg.Database.User)
+	logger.Infof("PASSWORD: %v", cfg.Database.Password)
+	logger.Infof("PORT: %v", cfg.Database.Port)
+	logger.Infof("SSL: %v", cfg.Database.SSLMode)
+	logger.Infof("DSN: %v", cfg.Database.DSN)
+	logger.Infof("LOGGING: %v", cfg.Logging)
+	logger.Infof("CORS: %v", cfg.Server.CorsAllowedOrigins)
+	logger.Infof("PORT: %v", cfg.Server.Port)
+	logger.Infof("IDLE TIMEOUT: %v", cfg.Server.IdleTimeout)
+	logger.Infof("READ TIMEOUT: %v", cfg.Server.ReadTimeout)
+	logger.Infof("SHUTDOWN TIMEOUT: %v", cfg.Server.ShutdownTimeout)
+	logger.Infof("WRITE TIMEOUT: %v", cfg.Server.WriteTimeout)
+
 	logger.Info("Starting server...")
 
 	// Connect to database
@@ -162,8 +179,6 @@ func connectToDatabase(cfg *config.Config, logger *logging.Logger) (*sql.DB, err
 			cfg.Database.SSLMode,
 		)
 	}
-
-	logger.Infof("Connecting to database: %s", dsn)
 
 	// Connect to database
 	db, err := sql.Open("postgres", dsn)
