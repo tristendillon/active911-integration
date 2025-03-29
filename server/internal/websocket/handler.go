@@ -42,11 +42,11 @@ func NewHandler(alertsHub, logsHub *Hub, auth *auth.Authenticator, logger *loggi
 func (h *Handler) HandleAlertsConnection(w http.ResponseWriter, r *http.Request) {
 	// Check authentication
 	authInfo := h.auth.GetAuthInfo(r)
-	if !authInfo.Authenticated {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		h.logger.Warn("Unauthorized attempt to connect to alerts WebSocket")
-		return
-	}
+	// if !authInfo.Authenticated {
+	// 	http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	// 	h.logger.Warn("Unauthorized attempt to connect to alerts WebSocket")
+	// 	return
+	// }
 
 	// Upgrade HTTP connection to WebSocket
 	conn, err := h.upgrader.Upgrade(w, r, nil)
@@ -55,8 +55,8 @@ func (h *Handler) HandleAlertsConnection(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Create a new client
-	client := NewClient(h.alertsHub, conn, h.logger)
+	// Create a new client with authentication status
+	client := NewClient(h.alertsHub, conn, h.logger, authInfo.Authenticated)
 
 	// Register client with hub
 	h.alertsHub.Register(client)
@@ -86,8 +86,8 @@ func (h *Handler) HandleLogsConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create a new client
-	client := NewClient(h.logsHub, conn, h.logger)
+	// Create a new client with authentication status
+	client := NewClient(h.logsHub, conn, h.logger, authInfo.Authenticated)
 
 	// Register client with hub
 	h.logsHub.Register(client)

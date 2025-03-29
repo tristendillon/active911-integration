@@ -10,10 +10,11 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Auth     AuthConfig
-	Logging  LoggingConfig
+	Server       ServerConfig
+	Database     DatabaseConfig
+	Auth         AuthConfig
+	Logging      LoggingConfig
+	Notification NotificationConfig
 }
 
 // ServerConfig holds the server configuration
@@ -49,6 +50,23 @@ type LoggingConfig struct {
 	RequestLogging bool
 }
 
+// NotificationConfig holds the notification configuration
+type NotificationConfig struct {
+	Email EmailConfig
+}
+
+// EmailConfig holds the email notification configuration
+type EmailConfig struct {
+	Enabled     bool
+	SMTPHost    string
+	SMTPPort    int
+	Username    string
+	Password    string
+	FromAddress string
+	ToAddresses []string
+	MinLevel    string // Minimum level to trigger email (error, fatal)
+}
+
 // New returns a new Config struct
 func New() *Config {
 	return &Config{
@@ -76,6 +94,18 @@ func New() *Config {
 			Format:         getEnv("LOG_FORMAT", "console"),
 			RequestLogging: getBoolEnv("REQUEST_LOGGING", true),
 		},
+		Notification: NotificationConfig{
+			Email: EmailConfig{
+				Enabled:     getBoolEnv("EMAIL_NOTIFICATIONS_ENABLED", false),
+				SMTPHost:    getEnv("EMAIL_SMTP_HOST", ""),
+				SMTPPort:    getIntEnv("EMAIL_SMTP_PORT", 587),
+				Username:    getEnv("EMAIL_USERNAME", ""),
+				Password:    getEnv("EMAIL_PASSWORD", ""),
+				FromAddress: getEnv("EMAIL_FROM_ADDRESS", ""),
+				ToAddresses: getSliceEnv("EMAIL_TO_ADDRESSES", []string{}),
+				MinLevel:    getEnv("EMAIL_MIN_LEVEL", "error"),
+			},
+		},
 	}
 }
 
@@ -102,8 +132,6 @@ func getEnv(key, defaultValue string) string {
 }
 
 // getIntEnv gets an integer environment variable or returns the default value
-// Currently unused, but kept for future use
-// nolint:unused
 func getIntEnv(key string, defaultValue int) int {
 	if value, exists := os.LookupEnv(key); exists {
 		if intValue, err := strconv.Atoi(value); err == nil {

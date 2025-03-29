@@ -20,6 +20,7 @@ import (
 	"github.com/user/alerting/server/internal/logging"
 	"github.com/user/alerting/server/internal/middleware"
 	"github.com/user/alerting/server/internal/models"
+	"github.com/user/alerting/server/internal/notification"
 	"github.com/user/alerting/server/internal/storage"
 	"github.com/user/alerting/server/internal/websocket"
 )
@@ -55,12 +56,18 @@ func main() {
 	logger.Infof("READ TIMEOUT: %v", cfg.Server.ReadTimeout)
 	logger.Infof("SHUTDOWN TIMEOUT: %v", cfg.Server.ShutdownTimeout)
 	logger.Infof("WRITE TIMEOUT: %v", cfg.Server.WriteTimeout)
+	logger.Infof("EMAIL NOTIFICATIONS: %v", cfg.Notification.Email.Enabled)
+	
+	// Setup notification service
+	notifyService := notification.NewService(cfg.Notification, logger)
+	logger.Info("Notification service initialized")
 
 	logger.Info("Starting server...")
 
 	// Connect to database
 	db, err := connectToDatabase(cfg, logger)
 	if err != nil {
+		notifyService.NotifyFatal(err, "Failed to connect to database")
 		logger.Fatal(err, "Failed to connect to database")
 	}
 	defer func() {
@@ -69,11 +76,18 @@ func main() {
 		}
 	}()
 
+	// Create notification middleware
+	notifier := notification.NewStorageNotifier(notifyService)
+	
 	// Create storage
 	store := storage.NewStorage(db)
 
 	// Ensure database schema exists
-	if err := store.EnsureSchema(context.Background()); err != nil {
+	err = notifier.WithNotifications(context.Background(), "schema initialization", func(ctx context.Context) error {
+		return store.EnsureSchema(ctx)
+	})
+	if err != nil {
+		notifyService.NotifyFatal(err, "Failed to ensure database schema")
 		logger.Fatal(err, "Failed to ensure database schema")
 	}
 
@@ -96,7 +110,10 @@ func main() {
 
 	// Setup middlewares
 	loggerMiddleware := middleware.NewLogger(logger, func(logEntry models.LogEntry) error {
-		return store.SaveLog(context.Background(), logEntry)
+		// Use the notifier to catch critical errors when saving logs
+		return notifier.WithNotifications(context.Background(), "save log entry", func(ctx context.Context) error {
+			return store.SaveLog(ctx, logEntry)
+		})
 	}, func(eventType string, data interface{}) {
 		// Broadcast log events to websocket clients
 		logsHub.BroadcastEvent(eventType, data)
@@ -119,9 +136,51 @@ func main() {
 	r.HandleFunc("/ws/alerts", wsHandler.HandleAlertsConnection)
 	r.HandleFunc("/ws/logs", wsHandler.HandleLogsConnection)
 
-	// Setup log message callback for both hubs
+	// Create a logger callback that can use the notifier
 	logMessageCallback := func(message models.WebSocketMessage, source, clientID string) {
-		saveWebSocketMessage(message, clientID, source, store, logger)
+		// Create a log entry
+		bodyJSON, err := json.Marshal(message)
+		if err != nil {
+			logger.Error(err, "Failed to marshal WebSocket message for logging")
+			return
+		}
+		
+		// Marshal headers for metadata
+		headers := map[string][]string{
+			"X-WebSocket-Message-Type": {message.Type},
+			"X-WebSocket-Source":       {source},
+			"X-WebSocket-Client-ID":    {clientID},
+		}
+		headersJSON, err := json.Marshal(headers)
+		if err != nil {
+			logger.Error(err, "Failed to marshal WebSocket headers")
+			headersJSON = []byte("{}")
+		}
+		
+		// Create log entry with a timestamp-based suffix to ensure uniqueness
+		now := time.Now()
+		uniqueID := message.ID + "-" + now.Format("20060102150405.000000000")
+		
+		logEntry := models.LogEntry{
+			ID:        uniqueID,
+			Type:      "ws_message",
+			Method:    "WEBSOCKET",
+			Path:      "/ws",
+			Body:      bodyJSON,
+			Headers:   headersJSON,
+			Timestamp: now,
+			SourceIP:  clientID,
+			ClientID:  clientID,
+			EventType: message.Type,
+			Direction: source,
+		}
+		
+		// Save log with notification for critical errors
+		if err := notifier.WithNotifications(context.Background(), "save websocket log", func(ctx context.Context) error {
+			return store.SaveLog(ctx, logEntry)
+		}); err != nil {
+			logger.Error(err, "Failed to save WebSocket message log")
+		}
 	}
 	alertsHub.SetLogMessageCallback(logMessageCallback)
 	logsHub.SetLogMessageCallback(logMessageCallback)
@@ -158,6 +217,7 @@ func main() {
 
 	// Shutdown server
 	if err := srv.Shutdown(ctx); err != nil {
+		notifyService.NotifyFatal(err, "Server forced to shutdown")
 		logger.Fatal(err, "Server forced to shutdown")
 	}
 
@@ -216,47 +276,3 @@ func connectToDatabase(cfg *config.Config, logger *logging.Logger) (*sql.DB, err
 	return nil, fmt.Errorf("failed to ping database after %d attempts: %w", maxRetries, lastErr)
 }
 
-// saveWebSocketMessage logs a WebSocket message to the database
-func saveWebSocketMessage(message models.WebSocketMessage, clientID, direction string, store *storage.Storage, logger *logging.Logger) {
-	// Marshal the WebSocket message for request body
-	bodyJSON, err := json.Marshal(message)
-	if err != nil {
-		logger.Error(err, "Failed to marshal WebSocket message for logging")
-		return
-	}
-
-	// Marshal headers for metadata
-	headers := map[string][]string{
-		"X-WebSocket-Message-Type": {message.Type},
-		"X-WebSocket-Source":       {direction},
-		"X-WebSocket-Client-ID":    {clientID},
-	}
-	headersJSON, err := json.Marshal(headers)
-	if err != nil {
-		logger.Error(err, "Failed to marshal WebSocket headers")
-		headersJSON = []byte("{}")
-	}
-
-	// Create log entry with a timestamp-based suffix to ensure uniqueness
-	now := time.Now()
-	uniqueID := message.ID + "-" + now.Format("20060102150405.000000000")
-
-	logEntry := models.LogEntry{
-		ID:        uniqueID,
-		Type:      "ws_message",
-		Method:    "WEBSOCKET",
-		Path:      "/ws",
-		Body:      bodyJSON,
-		Headers:   headersJSON,
-		Timestamp: now,
-		SourceIP:  clientID,
-		ClientID:  clientID,
-		EventType: message.Type,
-		Direction: direction,
-	}
-
-	// Save log entry
-	if err := store.SaveLog(context.Background(), logEntry); err != nil {
-		logger.Error(err, "Failed to save WebSocket message log")
-	}
-}

@@ -8,6 +8,7 @@ This is a refactored implementation of the alerting API server that handles aler
 - WebSocket real-time updates for alerts and logs
 - Comprehensive logging system
 - Authentication support
+- Email notifications for critical system errors
 - Graceful shutdown
 - Pagination, filtering, and sorting
 - Separate endpoints for alerts and logs
@@ -38,6 +39,8 @@ This is a refactored implementation of the alerting API server that handles aler
 - `alert_deleted` - Sent when an alert is deleted
 - `ping`/`pong` - For client-initiated ping/pong
 - `heartbeat` - Periodic server heartbeat (every 30 seconds)
+
+**Note**: For unauthenticated WebSocket clients, alert data in these events is automatically redacted to remove sensitive information, just like in the REST API. The redaction is based on the alert description and certain fields like medical details, addresses, and coordinates are redacted for privacy.
 
 ### Log Events
 
@@ -92,6 +95,18 @@ API_PASSWORD=your_secure_password
 LOG_LEVEL=debug
 LOG_FORMAT=console
 REQUEST_LOGGING=true
+
+# Email Notifications
+EMAIL_NOTIFICATIONS_ENABLED=false  # Set to true to enable
+EMAIL_SMTP_HOST=smtp.example.com   # Your SMTP server (e.g., smtp.gmail.com)
+EMAIL_SMTP_PORT=587               # TLS port (587) or SSL port (465)
+EMAIL_USERNAME=alerts@alertdashboard.com  # Email username
+EMAIL_PASSWORD=your-secure-password      # Email password or app-specific password
+EMAIL_FROM_ADDRESS=alerts@alertdashboard.com  # Sender address
+EMAIL_TO_ADDRESSES=admin1@example.com,admin2@example.com  # Comma-separated list of recipients
+EMAIL_MIN_LEVEL=error             # Minimum level to trigger email: "error" or "fatal"
+
+# See /internal/notification/README.md for detailed SMTP and DMARC configuration
 ```
 
 ## Project Structure
@@ -114,6 +129,11 @@ server/
 │   │   └── middleware.go     # HTTP middleware
 │   ├── models/
 │   │   └── models.go         # Data models
+│   ├── notification/
+│   │   ├── email.go          # Email notifications
+│   │   ├── middleware.go     # Notification middleware
+│   │   ├── service.go        # Notification service
+│   │   └── README.md         # Notification documentation
 │   ├── storage/
 │   │   └── db.go             # Database operations
 │   └── websocket/

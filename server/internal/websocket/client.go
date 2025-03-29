@@ -32,26 +32,28 @@ var (
 
 // Client represents a connected websocket client
 type Client struct {
-	hub    *Hub
-	conn   *websocket.Conn
-	send   chan models.WebSocketMessage
-	id     string
-	logger *logging.Logger
+	hub             *Hub
+	conn            *websocket.Conn
+	send            chan models.WebSocketMessage
+	id              string
+	logger          *logging.Logger
+	isAuthenticated bool // Track authentication status
 }
 
 // MessageHandler is a function that handles incoming messages
 type MessageHandler func(message models.WebSocketMessage, client *Client)
 
 // NewClient creates a new websocket client
-func NewClient(hub *Hub, conn *websocket.Conn, logger *logging.Logger) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn, logger *logging.Logger, isAuthenticated bool) *Client {
 	clientID := uuid.New().String()
 
 	return &Client{
-		hub:    hub,
-		conn:   conn,
-		send:   make(chan models.WebSocketMessage, sendBufferSize),
-		id:     clientID,
-		logger: logger.WithField("client_id", clientID),
+		hub:             hub,
+		conn:            conn,
+		send:            make(chan models.WebSocketMessage, sendBufferSize),
+		id:              clientID,
+		logger:          logger.WithField("client_id", clientID),
+		isAuthenticated: isAuthenticated,
 	}
 }
 
