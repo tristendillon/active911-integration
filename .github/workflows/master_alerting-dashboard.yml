@@ -27,7 +27,7 @@ jobs:
           password: ${{ secrets.AZURE_PASSWORD }}
 
       - name: Create .env.prod file
-        run: echo "${{ secrets.PROD_ENV }}" > server/.env.prod
+        run: echo "${{ secrets.PROD_ENV }}" > server/.env
 
       - name: Build and push container image to registry
         uses: docker/build-push-action@v3
