@@ -21,9 +21,11 @@ export default function NewAlertMap({ alert, center }: NewAlertMapProps) {
     lng: (center.lng + coords.lng) / 2,
   };
 
+  const markers = coords.lat && coords.lng ? [] : [center, coords];
+
   return (
     <div className="flex-1 h-full">
-      <GoogleMapComponent center={middlePoint} zoom={15} className="h-full" markers={[center, coords]} />
+      <GoogleMapComponent center={middlePoint} zoom={15} className="h-full" markers={markers} />
     </div>
   );
 }
