@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import type React from 'react';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+
 type LayoutProps = Readonly<{
   children: React.ReactNode;
   params: Promise<{
@@ -30,8 +32,9 @@ export default async function RootLayout({
 }: LayoutProps) {
 
   const { pagePassword } = await params;
-
-  if (pagePassword !== process.env.PAGE_PASSWORD && pagePassword !== 'public') {
+  const headersList = await headers();
+  const pathname = headersList.get('X-PATHNAME')
+  if (pagePassword !== process.env.PAGE_PASSWORD && pathname !== '/public/all') {
     redirect('/public/all')
   }
 

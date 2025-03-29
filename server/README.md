@@ -178,8 +178,3 @@ The server uses PostgreSQL and automatically creates the following tables:
 go build -o bin/server cmd/api/main.go
 ```
 
-### Testing
-
-```bash
-go test ./...
-```
