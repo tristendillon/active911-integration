@@ -21,7 +21,7 @@ export default function NewAlertMap({ alert, center }: NewAlertMapProps) {
     lng: (center.lng + coords.lng) / 2,
   };
 
-  const markers = coords.lat && coords.lng ? [] : [center, coords];
+  const markers = coords.lat && coords.lng ? [center, coords] : [];
 
   return (
     <div className="flex-1 h-full">
