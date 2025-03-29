@@ -31,6 +31,7 @@ WORKDIR /app
 
 # Copy the built server binary
 COPY --from=builder /bin/server /app/server
+COPY .env /app/.env
 
 # Expose the application port
 EXPOSE 8080
