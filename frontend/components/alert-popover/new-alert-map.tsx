@@ -3,6 +3,7 @@
 import type { Alert } from '@/lib/types';
 import React from 'react';
 import { GoogleMapComponent } from '../google-map-component';
+import { useDashboard } from '@/providers/dashboard-provider';
 
 interface NewAlertMapProps {
   alert: Alert;
@@ -10,6 +11,7 @@ interface NewAlertMapProps {
 }
 
 export default function NewAlertMap({ alert, center }: NewAlertMapProps) {
+  const { password } = useDashboard()
   const coords = {
     lat: alert.alert.lat,
     lng: alert.alert.lon,
@@ -21,7 +23,12 @@ export default function NewAlertMap({ alert, center }: NewAlertMapProps) {
     lng: (center.lng + coords.lng) / 2,
   };
 
-  const markers = coords.lat && coords.lng ? [center, coords] : [];
+  let markers: google.maps.LatLngLiteral[] = [];
+  if (password !== process.env.PAGE_PASSWORD) {
+    markers = [coords];
+  } else {
+    markers = [center, coords];
+  }
 
   return (
     <div className="flex-1 h-full">
