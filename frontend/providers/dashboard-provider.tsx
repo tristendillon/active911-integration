@@ -37,7 +37,7 @@ interface DashboardProviderProps {
 
 export function DashboardProvider({ children, password, units, center, sound, markers, zoom }: DashboardProviderProps) {
   const [isNewAlert, setIsNewAlert] = useState(false);
-  const { alerts, setAlerts, loading, emitListener, isConnected } = useAlerts(password);
+  const { alerts, setAlerts, loading, emitListener, isConnected } = useAlerts({ password });
   if (markers && markers.length === 0) {
     alerts.forEach((alert) => {
       if (alert.alert.lat && alert.alert.lon) {

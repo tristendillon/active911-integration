@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "MHK Alerts Embed",
+  description: "Embed configuration for MHK Alerts feed",
+};
 
 export default function Home() {
   const [flexAlignment, setFlexAlignment] = useState<"start" | "center" | "end">("start");
