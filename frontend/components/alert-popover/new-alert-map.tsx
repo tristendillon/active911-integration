@@ -23,8 +23,10 @@ export default function NewAlertMap({ alert, center }: NewAlertMapProps) {
     lng: (center.lng + coords.lng) / 2,
   };
 
+
+  console.log(password);
   let markers: google.maps.LatLngLiteral[] = [];
-  if (password === 'public') {
+  if (password === '') {
     markers = [coords];
   } else {
     markers = [center, coords];
