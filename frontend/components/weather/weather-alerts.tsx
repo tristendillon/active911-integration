@@ -114,11 +114,11 @@ export default function WeatherAlerts() {
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
+  console.log(weather);
   return (
     <div className="p-2 h-full w-full overflow-hidden flex flex-col">
       {loading && <LoadingWeatherAlerts />}
-      {!loading && weather?.alerts?.length === 0 && <NoWeatherAlerts />}
+      {!loading && !weather?.alerts && <NoWeatherAlerts />}
       {!loading && weather?.alerts && weather.alerts.length > 0 && (
         <div className="w-full flex items-center gap-2 justify-end flex-shrink-0">
           <CommandShortcut className="text-sm">{formattedTime}</CommandShortcut>
