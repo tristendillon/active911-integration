@@ -31,6 +31,8 @@
     "motion": "^12.5.0",
     "next": "15.2.2",
     "package.json": "^2.0.1",
+    "posthog-js": "^1.234.1",
+    "posthog-node": "^4.11.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-infinite-scroll-component": "^6.1.0",
