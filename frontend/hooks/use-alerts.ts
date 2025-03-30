@@ -2,12 +2,49 @@
 
 import type { Alert } from '@/lib/types';
 import EventEmitter from 'events';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 // Create singleton EventEmitter outside the hook to prevent multiple instances
 export const alertEmitter = new EventEmitter();
 // Increase max listeners to prevent potential warnings
 alertEmitter.setMaxListeners(20);
+
+// Create a global connection tracker to prevent multiple connections
+// This helps with React.StrictMode double rendering in development
+const connectionTracker = {
+  activeConnection: null as WebSocket | null,
+  connectionId: 0,
+  listeners: new Set<() => void>(),
+
+  // Register a new connection and get a unique ID
+  register(ws: WebSocket): number {
+    // Close any existing connection first
+    if (this.activeConnection && this.activeConnection.readyState !== WebSocket.CLOSED) {
+      // Set a flag to prevent reconnection attempts on this deliberate close
+      (this.activeConnection as any).__manuallyTerminated = true;
+      this.activeConnection.close();
+    }
+
+    this.activeConnection = ws;
+    return ++this.connectionId;
+  },
+
+  // Check if this connection is still the active one
+  isActive(id: number): boolean {
+    return this.connectionId === id;
+  },
+
+  // Add status change listener
+  addListener(callback: () => void) {
+    this.listeners.add(callback);
+    return () => this.listeners.delete(callback);
+  },
+
+  // Notify listeners of connection status change
+  notifyListeners() {
+    this.listeners.forEach(listener => listener());
+  }
+};
 
 const pingMessage = {
   type: 'ping',
@@ -26,133 +63,242 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
   const [page, setPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [total, setTotal] = useState(0);
-  // Use a ref to track the websocket connection to make cleanup more reliable
-  const wsRef = useRef<WebSocket | null>(null);
+
+  // Track connection ID to ensure we only handle events from the current connection
+  const connectionIdRef = useRef(0);
   // Track if component is mounted to avoid state updates after unmount
   const isMountedRef = useRef(true);
-  const fetchAlerts = async () => {
+  // Track reconnection attempts and timeout
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const maxReconnectAttempts = 5;
+  const reconnectBaseDelay = 1000; // 1 second initial delay
+
+  // Create a stable reference to the password for the WebSocket URL
+  const passwordRef = useRef(password);
+  useEffect(() => {
+    passwordRef.current = password;
+  }, [password]);
+
+  const fetchAlerts = useCallback(async () => {
+    if (!isMountedRef.current) return;
+
     try {
       const queryParams = new URLSearchParams()
       queryParams.set('limit', limit.toString())
       queryParams.set('offset', ((page - 1) * limit).toString())
-      if (password) {
-        queryParams.set('password', password)
+      if (passwordRef.current) {
+        queryParams.set('password', passwordRef.current)
       }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?${queryParams.toString()}`, {
         headers: {
           'ngrok-skip-browser-warning': 'true',
         },
       });
+
+      if (!isMountedRef.current) return;
+
       const data = await response.json();
 
-      if (isMountedRef.current) {
-        console.log(data);
-        const alerts = data.data;
-        if (alerts === null) {
-          setAlerts([]);
-        } else {
-          setAlerts(alerts);
-        }
-        // Update pagination information based on API response
-        setHasNextPage(data.next !== null);
-        setTotal(data.total || 0);
-        setLoading(false);
+      console.log('Fetched alerts:', data);
+      const fetchedAlerts = data.data;
+      if (fetchedAlerts === null) {
+        setAlerts([]);
+      } else {
+        setAlerts(fetchedAlerts);
       }
+
+      // Update pagination information based on API response
+      setHasNextPage(data.next !== null);
+      setTotal(data.total || 0);
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching alerts:', error);
       if (isMountedRef.current) {
         setLoading(false);
       }
     }
-  };
+  }, [page, limit]);
+
   useEffect(() => {
     fetchAlerts();
-  }, [page]);
+  }, [fetchAlerts]);
 
   const nextPage = () => {
-    setPage(page + 1);
+    setPage(prev => prev + 1);
   };
 
   const prevPage = () => {
-    setPage(page - 1);
+    setPage(prev => Math.max(1, prev - 1));
   };
 
-  const cleanupWebSocket = () => {
-    if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
-      wsRef.current.close();
-      wsRef.current = null;
+  const cleanupWebSocket = useCallback(() => {
+    // Clear any pending reconnection timeout
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
-  };
+  }, []);
 
-  const connectWebSocket = () => {
-    // First clean up any existing connection
+  const connectWebSocket = useCallback(() => {
     cleanupWebSocket();
-    const queryParams = password ? `?password=${password}` : '';
-    const websocket = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/alerts${queryParams}`);
-    websocket.onopen = () => {
-      if (isMountedRef.current) {
-        setIsConnected(true);
-        console.log('WebSocket connected');
-      }
-    };
 
-    websocket.onclose = () => {
-      if (isMountedRef.current) {
-        setIsConnected(false);
-        console.log('WebSocket disconnected');
-      }
-    };
+    // Reset attempts when explicitly connecting (not reconnecting)
+    reconnectAttemptsRef.current = 0;
 
-    websocket.onerror = () => {
-      if (isMountedRef.current) {
-        setIsConnected(false);
-      }
-    };
+    const attemptConnect = () => {
+      if (!isMountedRef.current) return;
 
-    websocket.onmessage = (event) => {
+      // Build WebSocket URL with current password
+      const queryParams = passwordRef.current ? `?password=${passwordRef.current}` : '';
+      const wsUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/alerts${queryParams}`;
+
       try {
-        const eventData = JSON.parse(event.data);
+        const websocket = new WebSocket(wsUrl);
 
-        if (eventData.type === 'new_alert') {
-          const newAlert: Alert = eventData.content;
-          if (isMountedRef.current) {
-            // Only emit the event, don't update state here to avoid duplicates
-            setAlerts((prevAlerts) => [...prevAlerts, newAlert]);
-            alertEmitter.emit(eventData.type, newAlert);
+        // Register this connection and get a unique ID
+        const connectionId = connectionTracker.register(websocket);
+        connectionIdRef.current = connectionId;
+
+        websocket.onopen = () => {
+          if (!isMountedRef.current || !connectionTracker.isActive(connectionId)) return;
+
+          console.log(`WebSocket connected (ID: ${connectionId})`);
+          setIsConnected(true);
+          reconnectAttemptsRef.current = 0;
+          connectionTracker.notifyListeners();
+        };
+
+        websocket.onclose = (event) => {
+          if (!connectionTracker.isActive(connectionId)) {
+            console.log(`Ignoring close event from inactive connection ${connectionId}`);
+            return;
           }
-        } else if (eventData.type === 'heartbeat') {
-          websocket.send(JSON.stringify(pingMessage));
-        }
+
+          console.log(`WebSocket disconnected (ID: ${connectionId})`);
+
+          if (isMountedRef.current) {
+            setIsConnected(false);
+            connectionTracker.notifyListeners();
+          }
+
+          // Don't attempt reconnect if this was manually terminated
+          if ((websocket as any).__manuallyTerminated) {
+            console.log('Connection was manually terminated, not attempting reconnect');
+            return;
+          }
+
+          // Try to reconnect if we haven't exceeded max attempts
+          if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+            reconnectAttemptsRef.current++;
+
+            // Calculate delay with exponential backoff (1s, 2s, 4s, 8s, 16s)
+            const delay = reconnectBaseDelay * Math.pow(2, reconnectAttemptsRef.current - 1);
+
+            console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts}) in ${delay}ms...`);
+
+            // Schedule reconnection attempt
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (isMountedRef.current && connectionTracker.isActive(connectionId)) {
+                attemptConnect();
+              }
+            }, delay);
+          } else {
+            console.log('Max reconnect attempts reached');
+          }
+        };
+
+        websocket.onerror = (error) => {
+          if (!connectionTracker.isActive(connectionId)) return;
+
+          console.error(`WebSocket error (ID: ${connectionId}):`, error);
+          if (isMountedRef.current) {
+            setIsConnected(false);
+          }
+          // Note: We don't clean up here as the onclose handler will be called after error
+        };
+
+        websocket.onmessage = (event) => {
+          if (!connectionTracker.isActive(connectionId)) return;
+
+          try {
+            const eventData = JSON.parse(event.data);
+
+            if (eventData.type === 'new_alert') {
+              const newAlert: Alert = eventData.content;
+              if (isMountedRef.current) {
+                setAlerts(prevAlerts => [newAlert, ...prevAlerts]);
+                alertEmitter.emit(eventData.type, newAlert);
+              }
+            } else if (eventData.type === 'heartbeat') {
+              websocket.send(JSON.stringify(pingMessage));
+            }
+          } catch (error) {
+            console.error('Error processing WebSocket message:', error);
+          }
+        };
       } catch (error) {
-        console.error('Error processing WebSocket message:', error);
+        console.error('Error creating WebSocket connection:', error);
+        // Schedule retry
+        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectAttemptsRef.current++;
+          const delay = reconnectBaseDelay * Math.pow(2, reconnectAttemptsRef.current - 1);
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (isMountedRef.current) {
+              attemptConnect();
+            }
+          }, delay);
+        }
       }
     };
 
-    wsRef.current = websocket;
-    return websocket;
-  };
+    attemptConnect();
+
+    // Return cleanup function
+    return () => {
+      cleanupWebSocket();
+    };
+  }, [cleanupWebSocket]);
 
   // Initialize WebSocket and fetch alerts on mount
   useEffect(() => {
     isMountedRef.current = true;
-    connectWebSocket();
-    fetchAlerts();
+
+    // Add listener to be notified of connection status changes
+    const removeListener = connectionTracker.addListener(() => {
+      if (isMountedRef.current) {
+        setIsConnected(!!connectionTracker.activeConnection &&
+                       connectionTracker.activeConnection.readyState === WebSocket.OPEN);
+      }
+    });
+
+    const cleanup = connectWebSocket();
 
     return () => {
       isMountedRef.current = false;
-      cleanupWebSocket();
-      // Clear any listeners on unmount
-      alertEmitter.removeAllListeners();
+      cleanup();
+      removeListener();
     };
-  }, [password]);
+  }, [connectWebSocket]);
+
+  // Only reconnect when password changes
+  useEffect(() => {
+    if (!isMountedRef.current) return;
+    connectWebSocket();
+  }, [password, connectWebSocket]);
 
   // Handle visibility changes - reconnect when tab becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Page became visible, reconnecting WebSocket');
+      if (document.visibilityState === 'visible' && isMountedRef.current) {
+        console.log('Page became visible, refreshing data and connection');
         fetchAlerts();
-        connectWebSocket();
+        // Only reconnect if we're not already connected
+        if (!connectionTracker.activeConnection ||
+            connectionTracker.activeConnection.readyState !== WebSocket.OPEN) {
+          connectWebSocket();
+        }
       }
     };
 
@@ -161,9 +307,9 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [fetchAlerts, connectWebSocket]);
 
-  const emitListener = (eventName: string, listener: (...args: any[]) => void) => {
+  const emitListener = useCallback((eventName: string, listener: (...args: any[]) => void) => {
     // Remove any existing listeners with the same name to prevent duplicates
     alertEmitter.removeAllListeners(eventName);
     // Add the new listener
@@ -173,7 +319,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     return () => {
       alertEmitter.removeListener(eventName, listener);
     };
-  };
+  }, []);
 
   return {
     alerts,
