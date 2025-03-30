@@ -23,8 +23,6 @@ export default function NewAlertMap({ alert, center }: NewAlertMapProps) {
     lng: (center.lng + coords.lng) / 2,
   };
 
-
-  console.log(password);
   let markers: google.maps.LatLngLiteral[] = [];
   if (password === '') {
     markers = [coords];
@@ -34,7 +32,7 @@ export default function NewAlertMap({ alert, center }: NewAlertMapProps) {
 
   return (
     <div className="flex-1 h-full">
-      <GoogleMapComponent center={middlePoint} zoom={15} className="h-full" markers={markers} />
+      <GoogleMapComponent center={middlePoint} zoom={15} className="h-full" markers={markers} showDirections />
     </div>
   );
 }

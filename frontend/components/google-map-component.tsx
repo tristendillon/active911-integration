@@ -20,9 +20,10 @@ interface GoogleMapComponentProps {
   zoom: number;
   className?: string;
   markers?: google.maps.LatLngLiteral[];
+  showDirections?: boolean;
 }
 
-export function GoogleMapComponent({ center = defaultMapCenter, zoom = 5, className, markers }: GoogleMapComponentProps) {
+export function GoogleMapComponent({ center = defaultMapCenter, zoom = 5, className, markers, showDirections = false }: GoogleMapComponentProps) {
   const { map, setMap } = useMap();
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
 
@@ -104,7 +105,7 @@ export function GoogleMapComponent({ center = defaultMapCenter, zoom = 5, classN
         {markers?.map((marker) => <MarkerF key={`${marker.lat}-${marker.lng}`} position={marker} />)}
 
         {/* Show directions if available */}
-        {directions && (
+        {showDirections && directions && (
           <DirectionsRenderer
             directions={directions}
             options={{
