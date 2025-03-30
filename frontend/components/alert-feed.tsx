@@ -4,7 +4,11 @@ import { useAlerts } from '@/hooks/use-alerts'
 import React from 'react'
 import AlertItem from './alert-item';
 
-export default function AlertFeed({ alignment }: { alignment: string }) {
+interface AlertFeedProps {
+  alignment: 'start' | 'center' | 'end';
+}
+
+export default function AlertFeed({ alignment }: AlertFeedProps) {
   const limit = 10;
   const { alerts, loading, isConnected, pagination: { hasNextPage, page, nextPage, prevPage, total } } = useAlerts({
     limit,
