@@ -148,13 +148,13 @@ server/
 To run the server:
 
 ```bash
-go run cmd/api/main.go
+go run .
 ```
 
 Or build and run:
 
 ```bash
-go build -o bin/server cmd/api/main.go
+go build -o bin/server .
 ./bin/server
 ```
 
