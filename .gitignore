@@ -87,6 +87,12 @@ next-env.d.ts
 **/bin
 **/tmp
 
-**/main.exe
+# binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+*.out
 
 **/.air.toml
