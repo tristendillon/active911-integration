@@ -114,7 +114,6 @@ export default function WeatherAlerts() {
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  console.log(weather);
   return (
     <div className="p-2 h-full w-full overflow-hidden flex flex-col">
       {loading && <LoadingWeatherAlerts />}
