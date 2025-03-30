@@ -8,9 +8,10 @@ import { alertEmitter } from '@/hooks/use-alerts';
 interface AlertItemProps {
   units?: string[];
   alert: Alert;
+  noEmit?: boolean;
 }
 
-export default function AlertItem({ units, alert }: AlertItemProps) {
+export default function AlertItem({ units, alert, noEmit }: AlertItemProps) {
   const recievedAt = useMemo(() => new Date(alert.alert.stamp * 1000), [alert.alert.stamp]);
   const [formatedRecievedAt, setFormatedRecievedAt] = useState(formatDistanceToNow(recievedAt, { addSuffix: true }));
 
@@ -22,11 +23,13 @@ export default function AlertItem({ units, alert }: AlertItemProps) {
   }, [recievedAt]);
 
   const handleClick = () => {
-    alertEmitter.emit('new_alert', alert);
+    if (!noEmit) {
+      alertEmitter.emit('new_alert', alert);
+    }
   };
 
   return (
-    <div className="flex flex-col border border-border rounded-md p-2 gap-1 cursor-pointer" onClick={handleClick}>
+    <div className={`flex flex-col border border-border rounded-md p-2 gap-1 ${noEmit ? 'cursor-default' : 'cursor-pointer'}`} onClick={handleClick}>
       <div className="flex flex-row justify-between items-center">
         <p className="font-semibold">{alert.alert.description}</p>
         <CommandShortcut className="text-sm">{formatedRecievedAt}</CommandShortcut>

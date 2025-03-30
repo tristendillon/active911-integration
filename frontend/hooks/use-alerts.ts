@@ -13,20 +13,32 @@ const pingMessage = {
   type: 'ping',
 };
 
-export function useAlerts(password?: string) {
+interface UseAlertsOptions {
+  password?: string;
+  page?: number;
+  limit?: number;
+}
+
+export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
-
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [total, setTotal] = useState(0);
   // Use a ref to track the websocket connection to make cleanup more reliable
   const wsRef = useRef<WebSocket | null>(null);
   // Track if component is mounted to avoid state updates after unmount
   const isMountedRef = useRef(true);
-
   const fetchAlerts = async () => {
     try {
-      const queryParams = password ? `?password=${password}` : '';
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts${queryParams}`, {
+      const queryParams = new URLSearchParams()
+      queryParams.set('limit', limit.toString())
+      queryParams.set('offset', ((page - 1) * limit).toString())
+      if (password) {
+        queryParams.set('password', password)
+      }
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?${queryParams.toString()}`, {
         headers: {
           'ngrok-skip-browser-warning': 'true',
         },
@@ -34,12 +46,16 @@ export function useAlerts(password?: string) {
       const data = await response.json();
 
       if (isMountedRef.current) {
+        console.log(data);
         const alerts = data.data;
         if (alerts === null) {
           setAlerts([]);
         } else {
           setAlerts(alerts);
         }
+        // Update pagination information based on API response
+        setHasNextPage(data.next !== null);
+        setTotal(data.total || 0);
         setLoading(false);
       }
     } catch (error) {
@@ -48,6 +64,17 @@ export function useAlerts(password?: string) {
         setLoading(false);
       }
     }
+  };
+  useEffect(() => {
+    fetchAlerts();
+  }, [page]);
+
+  const nextPage = () => {
+    setPage(page + 1);
+  };
+
+  const prevPage = () => {
+    setPage(page - 1);
   };
 
   const cleanupWebSocket = () => {
@@ -154,5 +181,12 @@ export function useAlerts(password?: string) {
     loading,
     emitListener,
     isConnected,
+    pagination: {
+      page,
+      nextPage,
+      prevPage,
+      hasNextPage,
+      total,
+    },
   };
 }
