@@ -9,8 +9,14 @@ interface RSSFeedPageProps {
 }
 
 export const metadata: Metadata = {
-  title: 'MHK Alerts Feed',
-  description: 'RSS-style feed of alerts for Manhattan, KS',
+  title: 'MHK Alerts Feed | Customized Emergency Notifications',
+  description: 'Customized alignment for emergency alerts and notifications in Manhattan, Kansas. Position your alert feed for optimal viewing.',
+  keywords: ['MHK alerts', 'Manhattan KS', 'emergency alerts', 'custom feed', 'aligned notifications', 'emergency RSS feed'],
+  openGraph: {
+    title: 'MHK Alerts Feed | Customized Emergency Notifications',
+    description: 'Customized alignment for emergency alerts and notifications in Manhattan, Kansas. Position your alert feed for optimal viewing.',
+    type: 'website',
+  },
 };
 
 export default async function RSSFeedPage({ params }: RSSFeedPageProps) {

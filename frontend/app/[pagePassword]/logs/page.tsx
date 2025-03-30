@@ -5,6 +5,11 @@ import { LogsFilter } from '@/components/logs/logs-filter';
 import { LogDetailSidebar } from '@/components/logs/log-detail-sidebar';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { Metadata } from 'next';
+export const metadata: Metadata = {
+  title: 'MHK Alerts Logs',
+  description: 'Logs for MHK Alerts',
+}
 
 interface LogsPageProps {
   params: Promise<{

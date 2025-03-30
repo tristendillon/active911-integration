@@ -14,15 +14,32 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   const { pagePassword } = await params;
 
   if (pagePassword !== process.env.PAGE_PASSWORD) {
+    // Public metadata (when password is incorrect)
     return {
-      title: 'MHK Public Alerts',
-      description: 'Public alert system for Manhattan, KS'
+      title: 'MHK Public Alerts | Manhattan Emergency Information',
+      description: 'Public emergency alert system for Manhattan, Kansas providing real-time updates on local emergencies and weather conditions.',
+      keywords: ['Manhattan KS alerts', 'public emergency information', 'MHK public alerts', 'emergency notifications', 'Kansas alerts'],
+      openGraph: {
+        title: 'MHK Public Alerts | Manhattan Emergency Information',
+        description: 'Public emergency alert system for Manhattan, Kansas providing real-time updates on local emergencies and weather conditions.',
+        type: 'website',
+        locale: 'en_US',
+      },
+      robots: {
+        index: true,
+        follow: true,
+      }
     };
   }
 
+  // Private metadata (when password is correct)
   return {
-    title: 'MHK Alerts',
-    description: 'Alert system for Manhattan, KS'
+    title: 'MHK Alerts Dashboard | Emergency Management System',
+    description: 'Authorized access to Manhattan, Kansas emergency management system with real-time alerts, maps and response tools.',
+    robots: {
+      index: false,
+      follow: false,
+    }
   };
 }
 
