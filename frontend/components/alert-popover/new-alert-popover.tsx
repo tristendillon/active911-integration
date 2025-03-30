@@ -96,7 +96,7 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
               <div className="h-[50vh] md:h-auto md:flex-1 relative">
                 <NewAlertMap alert={currentAlert} center={map.center} />
                 <div className="absolute w-1/2 bottom-2 right-2 bg-secondary/70 p-2 rounded-md">
-                  {alerts.data.filter((alert) => alert.alert.id !== currentAlert.alert.id).slice(0, 3).map((alert) => (
+                  {alerts.data.filter((alert) => alert.alert.id !== currentAlert.alert.id).sort((a, b) => b.alert.stamp - a.alert.stamp).slice(0, 3).map((alert) => (
                     <AlertItem key={alert.alert.id} alert={alert} units={units} />
                   ))}
                 </div>

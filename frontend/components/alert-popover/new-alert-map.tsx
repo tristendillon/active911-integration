@@ -24,7 +24,7 @@ export default function NewAlertMap({ alert, center }: NewAlertMapProps) {
   };
 
   let markers: google.maps.LatLngLiteral[] = [];
-  if (password !== process.env.PAGE_PASSWORD) {
+  if (password === 'public') {
     markers = [coords];
   } else {
     markers = [center, coords];
