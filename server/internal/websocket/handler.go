@@ -64,8 +64,25 @@ func (h *Handler) HandleAlertsConnection(w http.ResponseWriter, r *http.Request)
 	// Start goroutines for reading and writing
 	go client.WritePump()
 	client.ReadPump(func(message models.WebSocketMessage, client *Client) {
-		// Echo the message back to the client
-		client.SendMessage("echo", message.Content)
+		h.logger.Infof("Received message from client %s: %s", client.id, message.Type)
+		// Handle different message types
+		switch message.Type {
+		case "refresh":
+			// Check if client is authenticated
+			if !client.isAuthenticated {
+				client.SendMessage("error", "Unauthorized: Authentication required for refresh")
+				h.logger.Warnf("Unauthorized attempt to refresh by client %s", client.id)
+				return
+			}
+
+			// Broadcast refresh to all clients
+			h.alertsHub.BroadcastEvent("refresh", nil)
+			h.logger.Infof("Refresh broadcast triggered by authenticated client %s", client.id)
+
+		default:
+			// Echo other message types back to the client
+			client.SendMessage("echo", message.Content)
+		}
 	})
 }
 
@@ -95,7 +112,16 @@ func (h *Handler) HandleLogsConnection(w http.ResponseWriter, r *http.Request) {
 	// Start goroutines for reading and writing
 	go client.WritePump()
 	client.ReadPump(func(message models.WebSocketMessage, client *Client) {
-		// Echo the message back to the client
-		client.SendMessage("echo", message.Content)
+		// Handle different message types
+		switch message.Type {
+		case "refresh":
+			// Only authenticated clients can initiate refresh (already checked at connection time)
+			h.alertsHub.BroadcastEvent("refresh", nil)
+			h.logger.Infof("Refresh broadcast triggered by authenticated client %s", client.id)
+
+		default:
+			// Echo other message types back to the client
+			client.SendMessage("echo", message.Content)
+		}
 	})
 }

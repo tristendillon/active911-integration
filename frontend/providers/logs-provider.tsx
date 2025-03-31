@@ -261,6 +261,12 @@ export const LogsProvider: React.FC<LogsProviderProps> = ({ children, password }
           }
         } else if (eventData.type === 'heartbeat') {
           websocket.send(JSON.stringify(pingMessage));
+        } else if (eventData.type === 'refresh') {
+          console.log('Refresh command received, reloading page...');
+          // Emit the refresh event so other components can react if needed
+          logEmitter.emit('refresh');
+          // Refresh the page to get latest deployed changes
+          window.location.reload();
         }
       } catch (error) {
         console.error('Error processing Logs WebSocket message:', error);
