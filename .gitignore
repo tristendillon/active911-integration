@@ -95,4 +95,6 @@ next-env.d.ts
 *.bin
 *.out
 
+test-alerts.sh
+
 **/.air.toml

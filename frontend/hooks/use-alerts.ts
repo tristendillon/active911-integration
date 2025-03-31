@@ -42,8 +42,8 @@ const connectionTracker = {
 
   // Notify listeners of connection status change
   notifyListeners() {
-    this.listeners.forEach(listener => listener());
-  }
+    this.listeners.forEach((listener) => listener());
+  },
 };
 
 const pingMessage = {
@@ -74,21 +74,15 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
   const maxReconnectAttempts = 5;
   const reconnectBaseDelay = 1000; // 1 second initial delay
 
-  // Create a stable reference to the password for the WebSocket URL
-  const passwordRef = useRef(password);
-  useEffect(() => {
-    passwordRef.current = password;
-  }, [password]);
-
   const fetchAlerts = useCallback(async () => {
     if (!isMountedRef.current) return;
 
     try {
-      const queryParams = new URLSearchParams()
-      queryParams.set('limit', limit.toString())
-      queryParams.set('offset', ((page - 1) * limit).toString())
-      if (passwordRef.current) {
-        queryParams.set('password', passwordRef.current)
+      const queryParams = new URLSearchParams();
+      queryParams.set('limit', limit.toString());
+      queryParams.set('offset', ((page - 1) * limit).toString());
+      if (password) {
+        queryParams.set('password', password);
       }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?${queryParams.toString()}`, {
@@ -123,14 +117,14 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
 
   useEffect(() => {
     fetchAlerts();
-  }, [fetchAlerts]);
+  }, [fetchAlerts, password]);
 
   const nextPage = () => {
-    setPage(prev => prev + 1);
+    setPage((prev) => prev + 1);
   };
 
   const prevPage = () => {
-    setPage(prev => Math.max(1, prev - 1));
+    setPage((prev) => Math.max(1, prev - 1));
   };
 
   const cleanupWebSocket = useCallback(() => {
@@ -151,7 +145,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
       if (!isMountedRef.current) return;
 
       // Build WebSocket URL with current password
-      const queryParams = passwordRef.current ? `?password=${passwordRef.current}` : '';
+      const queryParams = password ? `?password=${password}` : '';
       const wsUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/alerts${queryParams}`;
 
       try {
@@ -228,7 +222,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
             if (eventData.type === 'new_alert') {
               const newAlert: Alert = eventData.content;
               if (isMountedRef.current) {
-                setAlerts(prevAlerts => [newAlert, ...prevAlerts]);
+                setAlerts((prevAlerts) => [newAlert, ...prevAlerts]);
                 alertEmitter.emit(eventData.type, newAlert);
               }
             } else if (eventData.type === 'heartbeat') {
@@ -259,7 +253,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     return () => {
       cleanupWebSocket();
     };
-  }, [cleanupWebSocket]);
+  }, [cleanupWebSocket, password]);
 
   // Initialize WebSocket and fetch alerts on mount
   useEffect(() => {
@@ -268,8 +262,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     // Add listener to be notified of connection status changes
     const removeListener = connectionTracker.addListener(() => {
       if (isMountedRef.current) {
-        setIsConnected(!!connectionTracker.activeConnection &&
-                       connectionTracker.activeConnection.readyState === WebSocket.OPEN);
+        setIsConnected(!!connectionTracker.activeConnection && connectionTracker.activeConnection.readyState === WebSocket.OPEN);
       }
     });
 
@@ -295,8 +288,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
         console.log('Page became visible, refreshing data and connection');
         fetchAlerts();
         // Only reconnect if we're not already connected
-        if (!connectionTracker.activeConnection ||
-            connectionTracker.activeConnection.readyState !== WebSocket.OPEN) {
+        if (!connectionTracker.activeConnection || connectionTracker.activeConnection.readyState !== WebSocket.OPEN) {
           connectWebSocket();
         }
       }
@@ -307,7 +299,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchAlerts, connectWebSocket]);
+  }, [fetchAlerts, connectWebSocket, password]);
 
   const emitListener = useCallback((eventName: string, listener: (...args: any[]) => void) => {
     // Remove any existing listeners with the same name to prevent duplicates
