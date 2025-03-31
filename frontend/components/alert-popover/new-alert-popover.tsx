@@ -1,4 +1,3 @@
-
 import type { Alert } from '@/lib/types';
 import { useDashboard } from '@/providers/dashboard-provider';
 import { alertEmitter } from '@/hooks/use-alerts';
@@ -16,7 +15,6 @@ const ANIMATION_DELAY = 1500; // 1.5 seconds
 interface NewAlertPopoverProps {
   sound?: boolean;
 }
-
 
 export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) {
   const [currentAlert, setCurrentAlert] = useState<Alert | null>(null);
@@ -86,19 +84,19 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
           transition={{ type: 'spring', damping: 30, stiffness: 200 }}
         >
           <div className="bg-secondary h-full w-full flex flex-col">
-            <NewAlertHeader
-              alert={currentAlert}
-              onDismiss={dismissAlert}
-              autoCloseTime={MAX_NEW_ALERT_TIME / 1000}
-            />
+            <NewAlertHeader alert={currentAlert} onDismiss={dismissAlert} autoCloseTime={MAX_NEW_ALERT_TIME / 1000} />
             <div className="flex-1 flex flex-col md:flex-row">
               <NewAlertSidebar alert={currentAlert} units={units} />
               <div className="h-[50vh] md:h-auto md:flex-1 relative">
                 <NewAlertMap alert={currentAlert} center={map.center} />
                 <div className="absolute w-1/2 bottom-2 right-2 bg-secondary/70 p-2 rounded-md">
-                  {alerts.data.filter((alert) => alert.alert.id !== currentAlert.alert.id).sort((a, b) => b.alert.stamp - a.alert.stamp).slice(0, 3).map((alert) => (
-                    <AlertItem key={alert.alert.id} alert={alert} units={units} />
-                  ))}
+                  {alerts.data
+                    .filter((alert) => alert.alert.id !== currentAlert.alert.id)
+                    .sort((a, b) => b.alert.stamp - a.alert.stamp)
+                    .slice(0, 3)
+                    .map((alert) => (
+                      <AlertItem key={alert.alert.id} alert={alert} units={units} noEmit />
+                    ))}
                 </div>
               </div>
             </div>
