@@ -98,8 +98,7 @@ export function GoogleMapComponent({ center = defaultMapCenter, zoom = 5, classN
           draggable: false,
           zoomControl: false,
           scrollwheel: false,
-          disableDefaultUI: true,
-          mapTypeId: google.maps.MapTypeId.HYBRID
+          disableDefaultUI: true
         }}
       >
         {/* Only show markers if we're not showing directions */}
