@@ -5,15 +5,22 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { CommandShortcut } from './ui/command';
 import { alertEmitter } from '@/hooks/use-alerts';
+import { cn } from '@/lib/utils';
 
 interface AlertItemProps {
   units?: string[];
   alert: Alert;
   noEmit?: boolean;
   isFireTV?: boolean;
+  showDetails?:
+    | {
+        lineClamp?: number;
+        maxHeight?: string;
+      }
+    | boolean;
 }
 
-export default function AlertItem({ units, alert, noEmit, isFireTV = false }: AlertItemProps) {
+export default function AlertItem({ units, alert, noEmit, isFireTV = false, showDetails = true }: AlertItemProps) {
   const recievedAt = useMemo(() => new Date(alert.alert.stamp * 1000), [alert.alert.stamp]);
   const [formatedRecievedAt, setFormatedRecievedAt] = useState(formatDistanceToNow(recievedAt, { addSuffix: true }));
 
@@ -30,39 +37,23 @@ export default function AlertItem({ units, alert, noEmit, isFireTV = false }: Al
       alertEmitter.emit('new_alert', alert);
     }
   };
-
-  // Adjust styles for Fire TV
-  const containerPadding = isFireTV ? "p-3" : "p-2";
-  const containerGap = isFireTV ? "gap-2" : "gap-1";
-  const titleTextSize = isFireTV ? "text-lg font-semibold" : "font-semibold";
-  const timeTextSize = isFireTV ? "text-base" : "text-sm";
-  const detailsTextSize = isFireTV ? "text-base px-4 overflow-hidden max-h-20 line-clamp-3" : "text-sm px-4 overflow-hidden max-h-16 line-clamp-3";
-  const addressTextSize = isFireTV ? "text-base ml-0" : "ml-0";
-  const badgeSize = isFireTV ? "text-base" : "";
-  const badgeGap = isFireTV ? "gap-3" : "gap-2";
-
   return (
-    <div 
-      className={`flex flex-col border border-border rounded-md ${containerPadding} ${containerGap} ${noEmit ? 'cursor-default' : 'cursor-pointer'}`} 
-      onClick={handleClick}
-    >
+    <div className={cn('flex flex-col border border-border rounded-md', isFireTV ? 'p-3 gap-2' : 'p-2 gap-1', noEmit ? 'cursor-default' : 'cursor-pointer')} onClick={handleClick}>
       <div className="flex flex-row justify-between items-center">
-        <p className={titleTextSize}>{alert.alert.description}</p>
-        <CommandShortcut className={timeTextSize}>{formatedRecievedAt}</CommandShortcut>
+        <p className={cn(isFireTV ? 'text-lg font-semibold' : 'font-semibold')}>{alert.alert.description}</p>
+        <CommandShortcut className={cn(isFireTV ? 'text-base' : 'text-sm')}>{formatedRecievedAt}</CommandShortcut>
       </div>
       <Separator />
-      <p className={detailsTextSize}>
-        {alert.alert.details === '[Redacted]' ? 'No details available' : alert.alert.details}
-      </p>
+      {showDetails && (
+        <p className={`text-base px-4 line-clamp-${typeof showDetails === 'object' ? showDetails.lineClamp : 3}`}>
+          {alert.alert.details === '[Redacted]' ? 'No details available' : alert.alert.details}
+        </p>
+      )}
       <div className="flex flex-row justify-between items-center">
-        <CommandShortcut className={addressTextSize}>{alert.alert.map_address}</CommandShortcut>
-        <div className={`flex flex-row ${badgeGap} items-center h-full`}>
+        <CommandShortcut className={cn(isFireTV ? 'text-base ml-0' : 'ml-0')}>{alert.alert.map_address}</CommandShortcut>
+        <div className={cn('flex flex-row items-center h-full', isFireTV ? 'gap-3' : 'gap-2')}>
           {alert.alert.units?.split(' ').map((unit) => (
-            <Badge 
-              variant={units?.includes(unit) ? 'destructive' : 'default'} 
-              key={unit}
-              className={badgeSize}
-            >
+            <Badge variant={units?.includes(unit) ? 'destructive' : 'default'} key={unit} className={cn(isFireTV ? 'text-base' : '')}>
               {unit}
             </Badge>
           ))}

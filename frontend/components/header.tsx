@@ -35,15 +35,6 @@ interface SoundToggleProps {
   isFireTV?: boolean;
 }
 
-interface ViewControlsProps {
-  zoomIn: () => void;
-  zoomOut: () => void;
-  toggleFullscreen: () => void;
-  zoomLevel: number;
-  isFullscreen: boolean;
-  isFireTV?: boolean;
-}
-
 interface HeaderProps {
   isFireTV?: boolean;
 }
@@ -54,8 +45,6 @@ export default function Header({ isFireTV = false }: HeaderProps) {
   const { sound } = useDashboard();
   const router = useRouter();
   const pathname = usePathname();
-  const [zoomLevel, setZoomLevel] = useState(100);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Update the clock every second
   useEffect(() => {
@@ -66,50 +55,11 @@ export default function Header({ isFireTV = false }: HeaderProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Check fullscreen status when it changes
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
   // Toggle sound function
   const toggleSound = () => {
     const searchParams = new URLSearchParams(window.location.search);
     searchParams.set('sound', sound ? 'off' : 'on');
     router.push(`${pathname}?${searchParams.toString()}`);
-  };
-
-  // Zoom functions
-  const zoomIn = () => {
-    if (zoomLevel < 150) {
-      const newZoom = zoomLevel + 10;
-      setZoomLevel(newZoom);
-      document.body.style.zoom = `${newZoom}%`;
-    }
-  };
-
-  const zoomOut = () => {
-    if (zoomLevel > 70) {
-      const newZoom = zoomLevel - 10;
-      setZoomLevel(newZoom);
-      document.body.style.zoom = `${newZoom}%`;
-    }
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch((err) => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`);
-      });
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
-    }
   };
 
   // Adjust header height based on device type
@@ -129,9 +79,6 @@ export default function Header({ isFireTV = false }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* View Controls (Zoom and Fullscreen) */}
-          <ViewControls zoomIn={zoomIn} zoomOut={zoomOut} toggleFullscreen={toggleFullscreen} zoomLevel={zoomLevel} isFullscreen={isFullscreen} isFireTV={isFireTV} />
-
           {/* Sound Toggle Button */}
           <SoundToggle sound={sound} toggleSound={toggleSound} isFireTV={isFireTV} />
         </div>
@@ -279,46 +226,6 @@ function WeatherSkeleton({ isFireTV = false }: { isFireTV?: boolean }) {
     </div>
   );
 }
-
-// New View Controls Component
-function ViewControls({ zoomIn, zoomOut, toggleFullscreen, zoomLevel, isFullscreen, isFireTV = false }: ViewControlsProps) {
-  // Adjust button size, icon size, and text size for Fire TV
-  const buttonSize = isFireTV ? 'sm' : 'lg';
-  const iconSize = isFireTV ? 'h-5 w-5' : 'h-4 w-4';
-  const textSize = isFireTV ? 'text-sm' : 'text-xs';
-  const gap = isFireTV ? 'gap-3' : 'gap-2';
-
-  // Add more horizontal padding for Fire TV buttons
-  const buttonPadding = isFireTV ? 'px-3' : '';
-
-  return (
-    <div className={`flex items-center ${gap}`}>
-      <Button variant="outline" size={buttonSize} onClick={zoomOut} className={`flex items-center gap-1 ${buttonPadding}`} title="Zoom Out">
-        <ZoomOutIcon className={iconSize} />
-        <span className={isFireTV ? 'inline' : 'hidden sm:inline'}>-</span>
-      </Button>
-
-      <span className={`${textSize} font-medium ${isFireTV ? 'block' : 'hidden sm:block'}`}>{zoomLevel}%</span>
-
-      <Button variant="outline" size={buttonSize} onClick={zoomIn} className={`flex items-center gap-1 ${buttonPadding}`} title="Zoom In">
-        <ZoomInIcon className={iconSize} />
-        <span className={isFireTV ? 'inline' : 'hidden sm:inline'}>+</span>
-      </Button>
-
-      <Button
-        variant={isFullscreen ? 'default' : 'outline'}
-        size={buttonSize}
-        onClick={toggleFullscreen}
-        className={`flex items-center ${buttonPadding} ${isFullscreen ? 'bg-primary hover:bg-primary/90' : ''}`}
-        title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-      >
-        {isFullscreen ? <FullscreenExitIcon className={iconSize} /> : <FullscreenIcon className={iconSize} />}
-        {isFireTV && <span className="ml-1">{isFullscreen ? 'Exit' : 'Full'}</span>}
-      </Button>
-    </div>
-  );
-}
-
 function SoundToggle({ sound, toggleSound, isFireTV = false }: SoundToggleProps) {
   // Adjust button size, icon size, and text for Fire TV
   const buttonSize = isFireTV ? 'sm' : 'lg';
@@ -366,50 +273,6 @@ function SoundOffIcon(props: React.SVGProps<SVGSVGElement>) {
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
       <line x1="23" y1="9" x2="17" y2="15" />
       <line x1="17" y1="9" x2="23" y2="15" />
-    </svg>
-  );
-}
-
-// New icon components for zoom and fullscreen
-function ZoomInIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      <line x1="11" y1="8" x2="11" y2="14" />
-      <line x1="8" y1="11" x2="14" y2="11" />
-    </svg>
-  );
-}
-
-function ZoomOutIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      <line x1="8" y1="11" x2="14" y2="11" />
-    </svg>
-  );
-}
-
-function FullscreenIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-      <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-      <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-    </svg>
-  );
-}
-
-function FullscreenExitIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-      <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-      <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-      <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
     </svg>
   );
 }

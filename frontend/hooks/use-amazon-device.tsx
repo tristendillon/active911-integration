@@ -26,10 +26,9 @@ export default function useAmazonDevice() {
       const fireTVMatch = /AFTM|AFT[BDIKMNRS]|AFTA|AFTS|AFTB|AFTT|AFTN|FireTV/i.test(ua);
       setIsFireTV(fireTVMatch);
 
-      if (silkMatch || fireTVMatch) {
+      if (silkMatch || fireTVMatch || true) {
         // Apply meta viewport scaling for Amazon devices
         const viewport = document.querySelector('meta[name="viewport"]');
-        console.log('viewport', viewport);
         if (viewport) {
           viewport.setAttribute('content', 'width=device-width, initial-scale=0.5, user-scalable=no');
         } else {
@@ -48,9 +47,9 @@ export default function useAmazonDevice() {
   }, []);
 
   return {
-    isAmazonDevice,
-    isSilk,
-    isFireTV,
+    isAmazonDevice: true,
+    isSilk: true,
+    isFireTV: true,
     userAgent,
   };
 }

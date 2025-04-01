@@ -1,6 +1,7 @@
 'use client';
 
 import type { Alert } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import React from 'react';
 
 interface NewAlertSidebarProps {
@@ -41,7 +42,7 @@ export default function NewAlertSidebar({ alert, units, isFireTV = false }: NewA
         {/* Alert description - large and prominent */}
         <div className={`${cardPadding} rounded-lg border`}>
           <h1 className={`${descriptionTextSize} font-bold text-red-500 ${descriptionMargin}`}>{alert.alert.description}</h1>
-          <div className={`${detailsTextSize} whitespace-pre-wrap`}>
+          <div className={`${detailsTextSize} ${cn(isFireTV && 'line-clamp-7')} overflow-y-hidden whitespace-pre-wrap`}>
             {alert.alert.details?.split(/\\r\\n|\\n|\r\n|\n/).map((line, index) => (
               <React.Fragment key={index}>
                 {line.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}
