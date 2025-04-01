@@ -42,6 +42,9 @@ func NewHandler(alertsHub, logsHub *Hub, auth *auth.Authenticator, logger *loggi
 func (h *Handler) HandleAlertsConnection(w http.ResponseWriter, r *http.Request) {
 	// Check authentication
 	authInfo := h.auth.GetAuthInfo(r)
+	h.logger.Infof("WebSocket connection authentication status: %v, password provided: %v", authInfo.Authenticated, authInfo.Password != "")
+
+	// Note: Authentication check is commented out to allow public access with redacted data
 	// if !authInfo.Authenticated {
 	// 	http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	// 	h.logger.Warn("Unauthorized attempt to connect to alerts WebSocket")
@@ -57,6 +60,8 @@ func (h *Handler) HandleAlertsConnection(w http.ResponseWriter, r *http.Request)
 
 	// Create a new client with authentication status
 	client := NewClient(h.alertsHub, conn, h.logger, authInfo.Authenticated)
+	h.logger.Infof("New WebSocket client created with ID %s, authentication status: %v",
+		client.id, client.isAuthenticated)
 
 	// Register client with hub
 	h.alertsHub.Register(client)

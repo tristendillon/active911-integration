@@ -48,13 +48,19 @@ func New(apiPassword string, logger *logging.Logger) *Authenticator {
 func (a *Authenticator) Authenticate(password string) (bool, error) {
 	if a.apiPassword == "" {
 		// If no password is set, authentication is bypassed
+		a.logger.Info("No API password configured - authentication bypass enabled")
 		return true, nil
 	}
 
+	a.logger.Infof("Authenticating request - API password configured: %v, password provided: %v",
+		a.apiPassword != "", password != "")
+
 	if password != a.apiPassword {
+		a.logger.Info("Authentication failed - incorrect password provided")
 		return false, ErrUnauthorized
 	}
 
+	a.logger.Info("Authentication successful")
 	return true, nil
 }
 
@@ -62,12 +68,15 @@ func (a *Authenticator) Authenticate(password string) (bool, error) {
 func (a *Authenticator) GetAuthInfo(r *http.Request) AuthInfo {
 	// Check query parameter first
 	password := r.URL.Query().Get("password")
+	a.logger.Infof("Auth check - Query param password present: %v", password != "")
 
 	// If empty, check Authorization header
 	if password == "" {
 		authHeader := r.Header.Get("Authorization")
+		a.logger.Infof("Auth check - Authorization header present: %v", authHeader != "")
 		if strings.HasPrefix(authHeader, "Bearer ") {
 			password = strings.TrimPrefix(authHeader, "Bearer ")
+			a.logger.Infof("Auth check - Bearer token extracted")
 		}
 	}
 
@@ -77,6 +86,9 @@ func (a *Authenticator) GetAuthInfo(r *http.Request) AuthInfo {
 		a.logger.Error(err, "Error authenticating request")
 		isAuthenticated = false
 	}
+
+	a.logger.Infof("Auth check complete - Password provided: %v, Authenticated: %v",
+		password != "", isAuthenticated)
 
 	return AuthInfo{
 		Authenticated: isAuthenticated,

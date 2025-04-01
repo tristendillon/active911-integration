@@ -89,61 +89,59 @@ func (h *Hub) Run() {
 
 // BroadcastEvent creates and sends a structured event message to all clients
 // It also handles redaction of sensitive information for unauthenticated clients
-func (h *Hub) BroadcastEvent(eventType string, content interface{}) {
-	// Check if the content needs redaction
-	// For alert related events, we need to check if it contains sensitive information
-	if content != nil && (eventType == "new_alert" || eventType == "alert_deleted" || eventType == "alert_updated") {
-		// Handle alert redaction
-		if alert, ok := content.(models.Alert); ok {
-			// Create the message with proper redaction
-			h.broadcastRedactedAlert(eventType, alert)
-			return
-		}
-	}
+func (h *Hub) BroadcastEvent(eventType string, content any) {
+	// Check if the content needs redaction based on event type
+	if content != nil && (eventType == "new_alert") {
+		// Handle both pointer and value types
+		var alert *models.Alert
 
-	// For other events, no redaction needed
-	msg := models.WebSocketMessage{
-		Type:    eventType,
-		Content: content,
-		ID:      uuid.New().String(),
-		Time:    time.Now(),
-	}
-
-	// Log the message if there's a callback
-	if h.logMessageCallback != nil && eventType != "new_log" {
-		h.logMessageCallback(msg, "server-broadcast", "all")
-	}
-
-	// Send the message to all clients
-	h.logger.Debugf("Broadcasting %s event to all clients on %s hub", eventType, h.hubType)
-	h.broadcast <- msg
-}
-
-// broadcastRedactedAlert sends a redacted version of an alert to clients that are not authenticated
-func (h *Hub) broadcastRedactedAlert(eventType string, alert models.Alert) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-
-	// Loop through all clients
-	for client := range h.clients {
-		// Get authentication info from the client - check if the client is authenticated
-		isAuthenticated := client.isAuthenticated
-
-		var msgContent any
-
-		// If not authenticated, redact sensitive information
-		if !isAuthenticated {
-			// Use the auth package to redact the alert
-			redactedAlert := auth.RedactAlertData(&alert, false)
-			msgContent = redactedAlert
-			h.logger.Infof("Sending redacted alert to unauthenticated client %s", client.id)
+		// Check if content is a pointer to Alert
+		alertPtr, ok := content.(*models.Alert)
+		if ok {
+			alert = alertPtr
 		} else {
-			// Send the full alert to authenticated clients
-			msgContent = alert
-			h.logger.Debugf("Sending full alert to authenticated client %s", client.id)
+			// Check if content is an Alert value
+			alertVal, ok := content.(models.Alert)
+			if ok {
+				alert = &alertVal
+			} else {
+				h.logger.Infof("Content is not an alert")
+				return
+			}
 		}
+		// Handle each client individually
+		for c := range h.clients {
+			var clientContent *models.Alert
 
-		// Create message for this specific client
+			if !c.isAuthenticated {
+				// Create a deep copy for redaction
+				alertCopy := models.DeepCopyAlert(*alert)
+				clientContent = auth.RedactAlertData(&alertCopy, false)
+			} else {
+				clientContent = alert
+			}
+
+			// Create individual message for this client
+			msg := models.WebSocketMessage{
+				Type:    eventType,
+				Content: clientContent,
+				ID:      uuid.New().String(),
+				Time:    time.Now(),
+			}
+
+			// Log the message if there's a callback
+			if h.logMessageCallback != nil && eventType != "new_log" {
+				h.logMessageCallback(msg, "server-direct", c.id)
+			}
+
+			// Send directly to this client
+			c.send <- msg
+		}
+	} else {
+		// For other events that don't need redaction, we can still use broadcast
+		msgContent := content
+
+		// Create the message
 		msg := models.WebSocketMessage{
 			Type:    eventType,
 			Content: msgContent,
@@ -152,18 +150,13 @@ func (h *Hub) broadcastRedactedAlert(eventType string, alert models.Alert) {
 		}
 
 		// Log the message if there's a callback
-		if h.logMessageCallback != nil {
-			h.logMessageCallback(msg, "server-broadcast", client.id)
+		if h.logMessageCallback != nil && eventType != "new_log" {
+			h.logMessageCallback(msg, "server-broadcast", "all")
 		}
 
-		// Send to the specific client
-		select {
-		case client.send <- msg:
-		default:
-			close(client.send)
-			delete(h.clients, client)
-			h.logger.Infof("Client %s removed due to send buffer full", client.id)
-		}
+		// Broadcast to all clients
+		h.logger.Debugf("Broadcasting %s event to all clients on %s hub", eventType, h.hubType)
+		h.broadcast <- msg
 	}
 }
 
@@ -251,6 +244,12 @@ func (h *Hub) GetType() HubType {
 // 	// If no further redaction needed based on description, return the alert with just always-redacted fields
 // 	if !needsRedaction {
 // 		return redactedAlert
+// 	}
+
+// 	// If we reach here, full redaction is needed
+// 	if !keepCoordinates {
+// 		redactedAlert.Alert.Lat = 0
+// 		redactedAlert.Alert.Lon = 0
 // 	}
 
 // 	// Redact additional fields for sensitive alerts

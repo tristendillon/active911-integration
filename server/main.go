@@ -57,7 +57,7 @@ func main() {
 	logger.Infof("SHUTDOWN TIMEOUT: %v", cfg.Server.ShutdownTimeout)
 	logger.Infof("WRITE TIMEOUT: %v", cfg.Server.WriteTimeout)
 	logger.Infof("EMAIL NOTIFICATIONS: %v", cfg.Notification.Email.Enabled)
-	
+
 	// Setup notification service
 	notifyService := notification.NewService(cfg.Notification, logger)
 	logger.Info("Notification service initialized")
@@ -78,7 +78,7 @@ func main() {
 
 	// Create notification middleware
 	notifier := notification.NewStorageNotifier(notifyService)
-	
+
 	// Create storage
 	store := storage.NewStorage(db)
 
@@ -125,7 +125,7 @@ func main() {
 	r.Use(loggerMiddleware.Logging)
 
 	// Register API routes
-	apiHandler := api.New(store, logger, func(eventType string, data interface{}) {
+	apiHandler := api.New(store, logger, func(eventType string, data any) {
 		// Broadcast API events to websocket clients
 		alertsHub.BroadcastEvent(eventType, data)
 	})
@@ -144,7 +144,7 @@ func main() {
 			logger.Error(err, "Failed to marshal WebSocket message for logging")
 			return
 		}
-		
+
 		// Marshal headers for metadata
 		headers := map[string][]string{
 			"X-WebSocket-Message-Type": {message.Type},
@@ -156,11 +156,11 @@ func main() {
 			logger.Error(err, "Failed to marshal WebSocket headers")
 			headersJSON = []byte("{}")
 		}
-		
+
 		// Create log entry with a timestamp-based suffix to ensure uniqueness
 		now := time.Now()
 		uniqueID := message.ID + "-" + now.Format("20060102150405.000000000")
-		
+
 		logEntry := models.LogEntry{
 			ID:        uniqueID,
 			Type:      "ws_message",
@@ -174,7 +174,7 @@ func main() {
 			EventType: message.Type,
 			Direction: source,
 		}
-		
+
 		// Save log with notification for critical errors
 		if err := notifier.WithNotifications(context.Background(), "save websocket log", func(ctx context.Context) error {
 			return store.SaveLog(ctx, logEntry)

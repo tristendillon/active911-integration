@@ -104,3 +104,124 @@ type APIResponse struct {
 	Error   string      `json:"error,omitempty"`
 	Meta    interface{} `json:"meta,omitempty"`
 }
+
+// DeepCopyAlertPtr creates a deep copy of an Alert struct from a pointer
+// and returns a new pointer to the copy
+func DeepCopyAlertPtr(original *Alert) *Alert {
+	if original == nil {
+		return nil
+	}
+
+	copy := DeepCopyAlert(*original)
+	return &copy
+}
+
+// DeepCopyAlert creates a deep copy of an Alert struct
+func DeepCopyAlert(original Alert) Alert {
+	// Create a new Alert
+	copy := Alert{
+		Agency: Agency{
+			Name:     original.Agency.Name,
+			ID:       original.Agency.ID,
+			Timezone: original.Agency.Timezone,
+		},
+		Alert: AlertDetails{
+			ID:     original.Alert.ID,
+			Lat:    original.Alert.Lat,
+			Lon:    original.Alert.Lon,
+			Stamp:  original.Alert.Stamp,
+			Status: original.Alert.Status,
+		},
+	}
+
+	// Deep copy all pointer fields by creating new pointers with copied values
+	if original.Alert.City != nil {
+		city := *original.Alert.City
+		copy.Alert.City = &city
+	}
+
+	if original.Alert.CoordinateSource != nil {
+		coordinateSource := *original.Alert.CoordinateSource
+		copy.Alert.CoordinateSource = &coordinateSource
+	}
+
+	if original.Alert.CrossStreet != nil {
+		crossStreet := *original.Alert.CrossStreet
+		copy.Alert.CrossStreet = &crossStreet
+	}
+
+	if original.Alert.CustomIdentifiers != nil {
+		customIdentifiers := *original.Alert.CustomIdentifiers
+		copy.Alert.CustomIdentifiers = &customIdentifiers
+	}
+
+	if original.Alert.Description != nil {
+		description := *original.Alert.Description
+		copy.Alert.Description = &description
+	}
+
+	if original.Alert.Details != nil {
+		details := *original.Alert.Details
+		copy.Alert.Details = &details
+	}
+
+	if original.Alert.DispatchCoords != nil {
+		dispatchCoords := *original.Alert.DispatchCoords
+		copy.Alert.DispatchCoords = &dispatchCoords
+	}
+
+	if original.Alert.MapAddress != nil {
+		mapAddress := *original.Alert.MapAddress
+		copy.Alert.MapAddress = &mapAddress
+	}
+
+	if original.Alert.MapCode != nil {
+		mapCode := *original.Alert.MapCode
+		copy.Alert.MapCode = &mapCode
+	}
+
+	if original.Alert.Place != nil {
+		place := *original.Alert.Place
+		copy.Alert.Place = &place
+	}
+
+	if original.Alert.Priority != nil {
+		priority := *original.Alert.Priority
+		copy.Alert.Priority = &priority
+	}
+
+	if original.Alert.Received != nil {
+		received := *original.Alert.Received
+		copy.Alert.Received = &received
+	}
+
+	if original.Alert.Source != nil {
+		source := *original.Alert.Source
+		copy.Alert.Source = &source
+	}
+
+	if original.Alert.State != nil {
+		state := *original.Alert.State
+		copy.Alert.State = &state
+	}
+
+	if original.Alert.Unit != nil {
+		unit := *original.Alert.Unit
+		copy.Alert.Unit = &unit
+	}
+
+	if original.Alert.Units != nil {
+		units := *original.Alert.Units
+		copy.Alert.Units = &units
+	}
+
+	// Deep copy slice
+	if original.Alert.PageGroups != nil {
+		copy.Alert.PageGroups = make([]string, len(original.Alert.PageGroups))
+		for i, pg := range original.Alert.PageGroups {
+			copy.Alert.PageGroups[i] = pg
+		}
+	}
+
+	return copy
+}

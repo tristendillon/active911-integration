@@ -120,15 +120,14 @@ export function WeatherProvider({ children, center }: WeatherProviderProps) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const fetchWeather = async () => {
     setLoading(true);
-    setWeather(testWeather);
-    // const API_URL = getAPIUrl(center);
-    // const res = await fetch(API_URL);
-    // const data = await res.json();
-    // if (res.ok) {
-    //   setWeather(data);
-    // } else {
-    //   console.error('Failed to fetch weather data');
-    // }
+    const API_URL = getAPIUrl(center);
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    if (res.ok) {
+      setWeather(data);
+    } else {
+      console.error('Failed to fetch weather data');
+    }
     setLoading(false);
   };
 

@@ -22,7 +22,7 @@ import (
 type Handler struct {
 	store        *storage.Storage
 	logger       *logging.Logger
-	eventEmitter func(string, interface{})
+	eventEmitter func(string, any)
 }
 
 // New creates a new API handler
@@ -318,7 +318,8 @@ func (h *Handler) GetAlert(w http.ResponseWriter, r *http.Request) {
 
 	// Redact sensitive information if not authenticated
 	if !authInfo.Authenticated {
-		responseAlert = auth.RedactAlertData(&alert, false)
+		redacted := auth.RedactAlertData(&alert, false)
+		responseAlert = redacted
 		h.logger.Infof("Returning redacted alert %s (unauthenticated access)", id)
 	} else {
 		// Use the original alert if authenticated
