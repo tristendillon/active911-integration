@@ -11,7 +11,7 @@ import AlertItem from '../alert-item';
 import useAmazonDevice from '@/hooks/use-amazon-device';
 import { cn } from '@/lib/utils';
 
-const MAX_NEW_ALERT_TIME = 180 * 1000; // 3 minutes
+const MAX_NEW_ALERT_TIME = 120 * 1000; // 3 minutes
 const ANIMATION_DELAY = 1500; // 1.5 seconds
 
 interface NewAlertPopoverProps {
@@ -95,14 +95,14 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
               <NewAlertSidebar alert={currentAlert} units={units} isFireTV={isFireTV} />
               <div className={cn('md:h-auto md:flex-1 relative', isFireTV ? 'h-[60vh]' : 'h-[50vh]')}>
                 <NewAlertMap alert={currentAlert} center={map.center} isFireTV={isFireTV} />
-                <div className={cn('absolute bottom-2 right-2 bg-secondary/70 rounded-md', isFireTV ? 'w-2/5 p-3' : 'w-1/2 p-2')}>
+{/*                 <div className={cn('absolute bottom-2 right-2 bg-secondary/70 rounded-md', isFireTV ? 'w-2/5 p-3' : 'w-1/2 p-2')}>
                   {alerts.data
                     .sort((a, b) => b.alert.stamp - a.alert.stamp)
                     .slice(0, 3)
                     .map((alert) => (
                       <AlertItem key={alert.alert.id} alert={alert} units={units} noEmit isFireTV={isFireTV} showDetails={{ lineClamp: 1, maxHeight: 'max-h-5' }} />
                     ))}
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
