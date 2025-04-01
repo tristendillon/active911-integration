@@ -26,7 +26,7 @@ export default function useAmazonDevice() {
       const fireTVMatch = /AFTM|AFT[BDIKMNRS]|AFTA|AFTS|AFTB|AFTT|AFTN|FireTV/i.test(ua);
       setIsFireTV(fireTVMatch);
 
-      if (silkMatch || fireTVMatch || true) {
+      if (silkMatch || fireTVMatch) {
         // Apply meta viewport scaling for Amazon devices
         const viewport = document.querySelector('meta[name="viewport"]');
         if (viewport) {
