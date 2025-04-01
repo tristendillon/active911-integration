@@ -99,6 +99,7 @@ export function GoogleMapComponent({ center = defaultMapCenter, zoom = 5, classN
           zoomControl: false,
           scrollwheel: false,
           disableDefaultUI: true,
+          mapTypeId: google.maps.MapTypeId.SATELLITE
         }}
       >
         {/* Only show markers if we're not showing directions */}
@@ -112,7 +113,7 @@ export function GoogleMapComponent({ center = defaultMapCenter, zoom = 5, classN
               suppressMarkers: true,
               polylineOptions: {
                 strokeColor: '#FF6666',
-                strokeWeight: 12,
+                strokeWeight: 10,
               },
             }}
           />
