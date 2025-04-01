@@ -45,7 +45,15 @@ export default function AlertItem({ units, alert, noEmit, isFireTV = false, show
       </div>
       <Separator />
       {showDetails && (
-        <p className={`text-base px-4 line-clamp-${typeof showDetails === 'object' ? showDetails.lineClamp : 3}`}>
+        <p
+          className={`text-base px-4`}
+          style={{
+            WebkitLineClamp: typeof showDetails === 'object' ? showDetails.lineClamp : 3,
+            WebkitBoxOrient: 'vertical',
+            display: '-webkit-box',
+            overflow: 'hidden',
+          }}
+        >
           {alert.alert.details === '[Redacted]' ? 'No details available' : alert.alert.details}
         </p>
       )}
