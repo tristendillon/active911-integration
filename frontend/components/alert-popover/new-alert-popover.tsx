@@ -7,7 +7,7 @@ import NewAlertHeader from './new-alert-header';
 import NewAlertSidebar from './new-alert-sidebar';
 import NewAlertMap from './new-alert-map';
 import { useAlertAudio } from '@/hooks/use-alert-audio';
-import AlertItem from '../alert-item';
+// import AlertItem from '../alert-item';
 import useAmazonDevice from '@/hooks/use-amazon-device';
 import { cn } from '@/lib/utils';
 
@@ -25,7 +25,7 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { playSound, stopSound } = useAlertAudio(sound);
 
-  const { setIsNewAlert, map, units, alerts } = useDashboard();
+  const { setIsNewAlert, map, units } = useDashboard();
 
   /** Dismiss the alert */
   const dismissAlert = useCallback(() => {
