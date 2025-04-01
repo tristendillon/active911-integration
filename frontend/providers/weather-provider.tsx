@@ -111,7 +111,14 @@ const testWeather: Weather = {
 };
 
 function getAPIUrl(center: google.maps.LatLngLiteral) {
-  return `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${center.lat},${center.lng}/2025-03-14/2025-03-16?unitGroup=us&elements=datetime%2Cname%2Caddress%2Clatitude%2Clongitude%2Ctempmax%2Ctempmin%2Ctemp%2Cfeelslikemax%2Cfeelslikemin%2Cfeelslike%2Cprecip%2Cprecipprob%2Cprecipcover%2Cpreciptype%2Cwindspeed%2Ccloudcover%2Cvisibility%2Cconditions%2Cicon&include=days%2Calerts%2Cevents&key=${process.env.NEXT_PUBLIC_WEATHER_API_KEY}&contentType=json`;
+  const today = new Date();
+  const endDate = new Date(today);
+  endDate.setDate(today.getDate() + 3);
+  
+  const formattedToday = today.toISOString().split('T')[0];
+  const formattedEndDate = endDate.toISOString().split('T')[0];
+  
+  return `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${center.lat},${center.lng}/${formattedToday}/${formattedEndDate}?unitGroup=us&elements=datetime%2Cname%2Caddress%2Clatitude%2Clongitude%2Ctempmax%2Ctempmin%2Ctemp%2Cfeelslikemax%2Cfeelslikemin%2Cfeelslike%2Cprecip%2Cprecipprob%2Cprecipcover%2Cpreciptype%2Cwindspeed%2Ccloudcover%2Cvisibility%2Cconditions%2Cicon&include=days%2Calerts%2Cevents&key=${process.env.NEXT_PUBLIC_WEATHER_API_KEY}&contentType=json`;
 }
 
 export function WeatherProvider({ children, center }: WeatherProviderProps) {
