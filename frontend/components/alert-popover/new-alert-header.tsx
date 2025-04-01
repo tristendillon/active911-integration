@@ -7,20 +7,31 @@ interface NewAlertHeaderProps {
   alert: Alert;
   onDismiss: () => void;
   autoCloseTime: number;
+  isFireTV?: boolean;
 }
 
-export default function NewAlertHeader({ alert, onDismiss, autoCloseTime }: NewAlertHeaderProps) {
+export default function NewAlertHeader({ alert, onDismiss, autoCloseTime, isFireTV = false }: NewAlertHeaderProps) {
 
+  // Adjust sizes for Fire TV
+  const headerPadding = isFireTV ? "p-5" : "p-4";
+  const iconSize = isFireTV ? "w-14 h-14" : "w-10 h-10";
+  const svgSize = isFireTV ? "28" : "24";
+  const titleSize = isFireTV ? "text-2xl" : "text-xl";
+  const subtitleSize = isFireTV ? "text-base" : "text-sm";
+  const agencySize = isFireTV ? "text-4xl" : "text-3xl";
+  const buttonSize = isFireTV ? "px-4 py-2 text-base" : "px-3 py-1.5 text-sm";
+  const gap = isFireTV ? "gap-5" : "gap-4";
+  
   return (
-    <header className="bg-background p-4 border-b shadow-sm w-full">
-      <div className="w-full flex items-center  justify-between">
-        <div className="flex items-center gap-4">
+    <header className={`bg-background ${headerPadding} border-b shadow-sm w-full`}>
+      <div className="w-full flex items-center justify-between">
+        <div className={`flex items-center ${gap}`}>
           {/* Alert icon */}
-          <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white">
+          <div className={`${iconSize} rounded-full bg-red-500 flex items-center justify-center text-white`}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
+              width={svgSize}
+              height={svgSize}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -36,20 +47,23 @@ export default function NewAlertHeader({ alert, onDismiss, autoCloseTime }: NewA
 
           {/* Alert title */}
           <div>
-            <h1 className="text-xl font-bold">New Alert</h1>
-            <p className="text-sm text-muted-foreground">Auto-dismissing in {autoCloseTime} seconds</p>
+            <h1 className={`${titleSize} font-bold`}>New Alert</h1>
+            <p className={`${subtitleSize} text-muted-foreground`}>Auto-dismissing in {autoCloseTime} seconds</p>
           </div>
         </div>
 
         {/* Agency info if available */}
         {alert.agency && (
           <div className="hidden md:block">
-            <p className="text-3xl font-medium">{alert.agency.name}</p>
+            <p className={`${agencySize} font-medium`}>{alert.agency.name}</p>
           </div>
         )}
 
         {/* Dismiss button */}
-        <button className="px-3 py-1.5 bg-primary text-primary-foreground text-sm rounded hover:bg-primary/90" onClick={onDismiss}>
+        <button 
+          className={`${buttonSize} bg-primary text-primary-foreground rounded hover:bg-primary/90`} 
+          onClick={onDismiss}
+        >
           Dismiss
         </button>
       </div>

@@ -34,7 +34,7 @@ export default async function StationSelectionPage({ params }: DashboardPageProp
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+    <div className="flex flex-col items-center justify-center min-h-screen h-full bg-background">
       <Card className="max-w-md w-full">
         <CardHeader>
           <CardTitle className="text-center">Select a Station</CardTitle>

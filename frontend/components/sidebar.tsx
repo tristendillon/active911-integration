@@ -7,35 +7,76 @@ import WeatherAlerts from './weather/weather-alerts';
 import { motion } from 'motion/react';
 import { WeatherAlertBanner } from './weather/weather-alert-banner';
 import { useWeather } from '@/providers/weather-provider';
-export default function Sidebar() {
+
+interface SidebarProps {
+  isFireTV?: boolean;
+}
+
+export default function Sidebar({ isFireTV = false }: SidebarProps) {
   const { alerts, units } = useDashboard();
   const { weather, loading } = useWeather();
+  
+  // Adjust padding and spacing for Fire TV
+  const padding = isFireTV ? "p-3" : "p-2";
+  const gap = isFireTV ? "gap-3" : "gap-2";
+  const weatherAlertHeight = isFireTV ? "h-[35vh]" : "h-[30vh]";
+  const alertsHeight = isFireTV ? "h-[75vh]" : "h-[70vh]";
+
+  // For Fire TV, we'll use a different layout for better readability
+  if (isFireTV) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Alerts section - takes 2/3 of height */}
+        <div className={`${padding} flex flex-col h-2/3 ${gap} border-b border-border overflow-auto`}>
+          <h2 className="text-2xl font-bold mb-2">Alerts</h2>
+          {alerts.data
+            .sort((a, b) => new Date(b.alert.stamp * 1000).getTime() - new Date(a.alert.stamp * 1000).getTime())
+            .slice(0, 10)
+            .map((alert) => (
+              <AlertItem key={alert.alert.id} units={units} alert={alert} isFireTV={isFireTV} />
+            ))}
+        </div>
+        
+        {/* Weather alerts section - takes 1/3 of height */}
+        <div className="flex flex-col h-1/3 overflow-auto">
+          <div className="h-full overflow-hidden">
+            <WeatherAlerts isFireTV={isFireTV} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Mobile layout
   return (
     <>
       {/* Weather alerts carousel - visible on mobile at top */}
-      <div className="block md:hidden h-[30vh] border-b border-border overflow-hidden">
-        <WeatherAlerts />
+      <div className={`block md:hidden ${weatherAlertHeight} border-b border-border overflow-hidden`}>
+        <WeatherAlerts isFireTV={isFireTV} />
       </div>
 
       {/* Alerts - full width on mobile, 3/5 on desktop */}
-      <motion.div layout className="p-2 flex flex-col h-[70vh] md:h-full gap-2 border-r border-border overflow-auto md:col-span-3 md:row-span-3">
+      <motion.div 
+        layout 
+        className={`${padding} flex flex-col ${alertsHeight} md:h-full ${gap} border-r border-border overflow-auto md:col-span-3 md:row-span-3`}
+      >
         {alerts.data
           .sort((a, b) => new Date(b.alert.stamp * 1000).getTime() - new Date(a.alert.stamp * 1000).getTime())
           .slice(0, 10)
           .map((alert) => (
-            <AlertItem key={alert.alert.id} units={units} alert={alert} />
+            <AlertItem key={alert.alert.id} units={units} alert={alert} isFireTV={false} />
           ))}
       </motion.div>
 
       {/* Weather alerts detail - hidden on mobile, visible on desktop */}
       <div className="hidden md:flex md:col-span-2 md:row-span-2 border-r border-b border-border h-full md:max-h-none overflow-hidden">
-        <WeatherAlerts />
+        <WeatherAlerts isFireTV={false} />
       </div>
       <div className="hidden md:flex md:col-span-2 md:row-span-1 border-r border-b border-border max-h-[20vh] md:max-h-none overflow-auto">
         {!loading && weather?.alerts && weather.alerts.length > 0 && (
-          <div className="flex flex-col w-full gap-2 p-2">
+          <div className={`flex flex-col w-full ${gap} ${padding}`}>
             {weather.alerts.map((weatherAlert) => (
-              <WeatherAlertBanner key={weatherAlert.id} weatherAlert={weatherAlert} />
+              <WeatherAlertBanner key={weatherAlert.id} weatherAlert={weatherAlert} isFireTV={false} />
             ))}
           </div>
         )}

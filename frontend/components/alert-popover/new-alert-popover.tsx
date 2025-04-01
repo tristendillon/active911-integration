@@ -8,6 +8,7 @@ import NewAlertSidebar from './new-alert-sidebar';
 import NewAlertMap from './new-alert-map';
 import { useAlertAudio } from '@/hooks/use-alert-audio';
 import AlertItem from '../alert-item';
+import useAmazonDevice from '@/hooks/use-amazon-device';
 
 const MAX_NEW_ALERT_TIME = 180 * 1000; // 3 minutes
 const ANIMATION_DELAY = 1500; // 1.5 seconds
@@ -17,6 +18,7 @@ interface NewAlertPopoverProps {
 }
 
 export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) {
+  const { isFireTV } = useAmazonDevice();
   const [currentAlert, setCurrentAlert] = useState<Alert | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
@@ -41,6 +43,7 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
   /** Handle new alert event */
   useEffect(() => {
     function handleNewAlert(newAlert: Alert) {
+      console.log('Received new_alert event:', newAlert.alert.description);
       setCurrentAlert(newAlert);
       setIsAnimating(true);
 
@@ -53,9 +56,12 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
       }, ANIMATION_DELAY);
     }
 
+    // Log that we're setting up the listener
+    console.log('Setting up new_alert event listener');
     alertEmitter.on('new_alert', handleNewAlert);
 
     return () => {
+      console.log('Cleaning up new_alert event listener');
       alertEmitter.off('new_alert', handleNewAlert);
       clearTimeout(animationTimeoutRef.current!);
       stopSound();
@@ -84,18 +90,37 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
           transition={{ type: 'spring', damping: 30, stiffness: 200 }}
         >
           <div className="bg-secondary h-full w-full flex flex-col">
-            <NewAlertHeader alert={currentAlert} onDismiss={dismissAlert} autoCloseTime={MAX_NEW_ALERT_TIME / 1000} />
-            <div className="flex-1 flex flex-col md:flex-row">
-              <NewAlertSidebar alert={currentAlert} units={units} />
-              <div className="h-[50vh] md:h-auto md:flex-1 relative">
-                <NewAlertMap alert={currentAlert} center={map.center} />
-                <div className="absolute w-1/2 bottom-2 right-2 bg-secondary/70 p-2 rounded-md">
+            <NewAlertHeader 
+              alert={currentAlert} 
+              onDismiss={dismissAlert} 
+              autoCloseTime={MAX_NEW_ALERT_TIME / 1000} 
+              isFireTV={isFireTV}
+            />
+            <div className={`flex-1 flex flex-col ${isFireTV ? 'md:flex-row' : 'md:flex-row'}`}>
+              <NewAlertSidebar 
+                alert={currentAlert} 
+                units={units} 
+                isFireTV={isFireTV}
+              />
+              <div className={`${isFireTV ? 'h-[60vh]' : 'h-[50vh]'} md:h-auto md:flex-1 relative`}>
+                <NewAlertMap 
+                  alert={currentAlert} 
+                  center={map.center} 
+                  isFireTV={isFireTV}
+                />
+                <div className={`absolute ${isFireTV ? 'w-2/3' : 'w-1/2'} bottom-2 right-2 bg-secondary/70 ${isFireTV ? 'p-3' : 'p-2'} rounded-md`}>
                   {alerts.data
                     .filter((alert) => alert.alert.id !== currentAlert.alert.id)
                     .sort((a, b) => b.alert.stamp - a.alert.stamp)
                     .slice(0, 3)
                     .map((alert) => (
-                      <AlertItem key={alert.alert.id} alert={alert} units={units} noEmit />
+                      <AlertItem 
+                        key={alert.alert.id} 
+                        alert={alert} 
+                        units={units} 
+                        noEmit 
+                        isFireTV={isFireTV}
+                      />
                     ))}
                 </div>
               </div>

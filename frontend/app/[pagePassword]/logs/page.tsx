@@ -9,7 +9,7 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'MHK Alerts Logs',
   description: 'Logs for MHK Alerts',
-}
+};
 
 interface LogsPageProps {
   params: Promise<{
@@ -23,7 +23,7 @@ export default async function LogsPage({ params }: LogsPageProps) {
   // Use API_PASSWORD for validation
   if (pagePassword !== process.env.PAGE_PASSWORD) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-full z">
         <div className="bg-red-900/20 text-red-500 p-4 rounded-md border border-red-800">Invalid password. Access denied.</div>
       </div>
     );
@@ -31,7 +31,7 @@ export default async function LogsPage({ params }: LogsPageProps) {
 
   return (
     <LogsProvider password={pagePassword}>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen h-full bg-background">
         <div className="container mx-auto px-4 py-6">
           <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
             <div className="flex items-center space-x-4">

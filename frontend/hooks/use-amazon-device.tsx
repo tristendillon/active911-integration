@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import { useState, useEffect } from 'react';
 
@@ -17,15 +17,15 @@ export default function useAmazonDevice() {
     if (typeof window !== 'undefined') {
       const ua = window.navigator.userAgent;
       setUserAgent(ua);
-      
+
       // Check for Amazon Silk browser
       const silkMatch = /silk/i.test(ua);
       setIsSilk(silkMatch);
-      
+
       // Check for Fire TV Stick
       const fireTVMatch = /AFTM|AFT[BDIKMNRS]|AFTA|AFTS|AFTB|AFTT|AFTN|FireTV/i.test(ua);
       setIsFireTV(fireTVMatch);
-      
+
       // Set overall Amazon device flag
       setIsAmazonDevice(silkMatch || fireTVMatch);
     }
@@ -35,6 +35,6 @@ export default function useAmazonDevice() {
     isAmazonDevice,
     isSilk,
     isFireTV,
-    userAgent
+    userAgent,
   };
-};
+}

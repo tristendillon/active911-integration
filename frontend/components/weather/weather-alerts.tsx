@@ -10,7 +10,11 @@ import { NoWeatherAlerts } from './no-weather-alerts';
 import { CommandShortcut } from '../ui/command';
 
 const AUTO_SCROLL_DELAY = 90;
-export default function WeatherAlerts() {
+interface WeatherAlertsProps {
+  isFireTV?: boolean;
+}
+
+export default function WeatherAlerts({ isFireTV = false }: WeatherAlertsProps) {
   const { weather, loading } = useWeather();
   const [current, setCurrent] = useState(0);
   const [api, setApi] = useState<CarouselApi | null>(null);
@@ -114,13 +118,24 @@ export default function WeatherAlerts() {
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  // Adjust styles for FireTV
+  const containerPadding = isFireTV ? "p-3" : "p-2";
+  const timeTextSize = isFireTV ? "text-base" : "text-sm";
+  const cardGap = isFireTV ? "gap-3 md:gap-5 lg:gap-7" : "gap-2 md:gap-4 lg:gap-6";
+  const cardHeaderPadding = isFireTV ? "p-3" : "p-2";
+  const cardContentPadding = isFireTV ? "p-3" : "p-2";
+  const titleTextSize = isFireTV ? "text-base sm:text-lg" : "text-sm sm:text-base";
+  const descriptionTextSize = isFireTV ? "text-sm sm:text-base" : "text-xs sm:text-sm";
+  const contentGap = isFireTV ? "gap-2 sm:gap-3" : "gap-1 sm:gap-2";
+  const indicatorSize = isFireTV ? "h-3 w-3" : "h-2 w-2";
+  
   return (
-    <div className="p-2 h-full w-full overflow-hidden flex flex-col">
-      {loading && <LoadingWeatherAlerts />}
-      {!loading && !weather?.alerts && <NoWeatherAlerts />}
+    <div className={`${containerPadding} h-full w-full overflow-hidden flex flex-col`}>
+      {loading && <LoadingWeatherAlerts isFireTV={isFireTV} />}
+      {!loading && !weather?.alerts && <NoWeatherAlerts isFireTV={isFireTV} />}
       {!loading && weather?.alerts && weather.alerts.length > 0 && (
         <div className="w-full flex items-center gap-2 justify-end flex-shrink-0">
-          <CommandShortcut className="text-sm">{formattedTime}</CommandShortcut>
+          <CommandShortcut className={timeTextSize}>{formattedTime}</CommandShortcut>
         </div>
       )}
       {!loading && weather?.alerts && weather.alerts.length > 0 && (
@@ -128,18 +143,18 @@ export default function WeatherAlerts() {
           <CarouselContent className="flex h-full">
             {weather.alerts.map((alert, alertIndex) => (
               <CarouselItem key={alert.id} className="h-full">
-                <Card className="flex flex-col h-full overflow-hidden py-0 md:py-2 lg:py-4 gap-2 md:gap-4 lg:gap-6">
-                  <CardHeader className="flex-shrink-0 p-2">
+                <Card className={`flex flex-col h-full overflow-hidden py-0 md:py-2 lg:py-4 ${cardGap}`}>
+                  <CardHeader className={`flex-shrink-0 ${cardHeaderPadding}`}>
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-sm sm:text-base">{alert.event}</CardTitle>
+                      <CardTitle className={titleTextSize}>{alert.event}</CardTitle>
                     </div>
-                    <CardDescription className="text-xs sm:text-sm">{alert.headline}</CardDescription>
+                    <CardDescription className={descriptionTextSize}>{alert.headline}</CardDescription>
                   </CardHeader>
-                  <CardContent className="flex-grow flex flex-col p-2 overflow-hidden">
+                  <CardContent className={`flex-grow flex flex-col ${cardContentPadding} overflow-hidden`}>
                     <div className="flex flex-col h-full overflow-hidden">
                       <div
                         id="auto-scroll"
-                        className="flex flex-col gap-1 sm:gap-2 mt-2 overflow-y-hidden flex-grow"
+                        className={`flex flex-col ${contentGap} mt-2 overflow-y-hidden flex-grow`}
                         ref={(el) => {
                           scrollContainerRefs.current[alertIndex] = el;
                         }}
@@ -149,7 +164,7 @@ export default function WeatherAlerts() {
                         }}
                       >
                         {alert.description.split('\n').map((line, i) => (
-                          <p key={i}>{line}</p>
+                          <p key={i} className={isFireTV ? "text-base" : ""}>{line}</p>
                         ))}
                       </div>
                     </div>
@@ -160,7 +175,10 @@ export default function WeatherAlerts() {
           </CarouselContent>
           <div className="flex justify-center gap-2 mt-2 flex-shrink-0">
             {weather.alerts.map((_, index) => (
-              <div key={index} className={`h-2 w-2 rounded-full transition-colors ${current === index ? 'bg-primary' : 'bg-primary/30'}`} />
+              <div 
+                key={index} 
+                className={`${indicatorSize} rounded-full transition-colors ${current === index ? 'bg-primary' : 'bg-primary/30'}`} 
+              />
             ))}
           </div>
         </Carousel>

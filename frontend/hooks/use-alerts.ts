@@ -308,14 +308,14 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
   }, [fetchAlerts, connectWebSocket, password]);
 
   const emitListener = useCallback((eventName: string, listener: (...args: any[]) => void) => {
-    // Remove any existing listeners with the same name to prevent duplicates
-    alertEmitter.removeAllListeners(eventName);
-    // Add the new listener
+    // Add the new listener without removing existing ones
     alertEmitter.on(eventName, listener);
+    console.log(`Added listener for '${eventName}' event`);
 
     // Return a cleanup function to remove the specific listener
     return () => {
       alertEmitter.removeListener(eventName, listener);
+      console.log(`Removed listener for '${eventName}' event`);
     };
   }, []);
 
