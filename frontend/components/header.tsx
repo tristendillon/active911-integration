@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { useWeather } from '@/providers/weather-provider';
 import { useDashboard } from '@/providers/dashboard-provider';
 import { Button } from './ui/button';
@@ -173,7 +173,9 @@ function CompactDayWeather({ day, isToday, isFireTV = false }: DayWeatherProps &
   return (
     <div className={`flex-shrink-0 ${containerWidth} ${containerPadding} border-r last:border-r-0 border-border`}>
       <div className="flex flex-col items-center">
-        <span className={dateTextSize}>{isToday ? 'Today' : format(new Date(day.datetime), 'EEE, M/d')}</span>
+        <span className={dateTextSize}>
+          {isToday ? 'Today' : format(addDays(new Date(day.datetime), 1), 'EEE, M/d')}
+        </span>
 
         {day.icon && (
           <div className={`relative ${iconSize}`}>
