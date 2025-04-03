@@ -23,7 +23,7 @@ interface GoogleMapComponentProps {
   showDirections?: boolean;
 }
 
-export function GoogleMapComponent({ center = defaultMapCenter, zoom = 5, className, markers, showDirections = false }: GoogleMapComponentProps) {
+export function GoogleMapComponent({ center = defaultMapCenter, zoom = 20, className, markers, showDirections = false }: GoogleMapComponentProps) {
   const { map, setMap } = useMap();
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
 
@@ -41,7 +41,7 @@ export function GoogleMapComponent({ center = defaultMapCenter, zoom = 5, classN
 
     // Reset directions when markers change
     setDirections(null);
-
+    console.log(markers);
     if (markers && markers.length === 2) {
       const directionsService = new google.maps.DirectionsService();
 

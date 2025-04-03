@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import type React from 'react';
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
 
 type LayoutProps = Readonly<{
   children: React.ReactNode;
@@ -13,8 +12,8 @@ type LayoutProps = Readonly<{
 export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
   const { pagePassword } = await params;
 
-  if (pagePassword !== process.env.PAGE_PASSWORD) {
-    // Public metadata (when password is incorrect)
+  // Allow public routes without redirection
+  if (pagePassword === 'public') {
     return {
       title: 'MHK Public Alerts | Manhattan Emergency Information',
       description: 'Public emergency alert system for Manhattan, Kansas providing real-time updates on local emergencies and weather conditions.',
@@ -28,6 +27,18 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
       robots: {
         index: true,
         follow: true,
+      }
+    };
+  }
+
+  if (pagePassword !== process.env.PAGE_PASSWORD) {
+    // Incorrect password metadata
+    return {
+      title: 'Unauthorized Access',
+      description: 'Unauthorized access to Manhattan emergency alert system.',
+      robots: {
+        index: false,
+        follow: false,
       }
     };
   }
@@ -47,14 +58,17 @@ export default async function RootLayout({
   children,
   params
 }: LayoutProps) {
-
   const { pagePassword } = await params;
-  const headersList = await headers();
-  const pathname = headersList.get('X-PATHNAME')
-  if (pagePassword !== process.env.PAGE_PASSWORD && pathname !== '/public/all') {
-    redirect('/public/all')
+
+  // Allow public routes without redirection
+  if (pagePassword === 'public') {
+    return children;
   }
 
+  // Protect all non-public routes with password
+  if (pagePassword !== process.env.PAGE_PASSWORD) {
+    redirect('/public');
+  }
 
   return children;
 }

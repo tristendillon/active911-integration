@@ -27,7 +27,7 @@ export default function NewAlertMap({ alert, center, isFireTV = false }: NewAler
   };
 
   let markers: google.maps.LatLngLiteral[] = [];
-  if (password === '') {
+  if (password === 'public') {
     markers = [coords];
   } else {
     markers = [center, coords];

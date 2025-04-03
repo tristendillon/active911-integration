@@ -38,6 +38,7 @@ type Client struct {
 	id              string
 	logger          *logging.Logger
 	isAuthenticated bool // Track authentication status
+	metadata        map[string]string // Metadata for storing client-specific info like station
 }
 
 // MessageHandler is a function that handles incoming messages
@@ -54,6 +55,7 @@ func NewClient(hub *Hub, conn *websocket.Conn, logger *logging.Logger, isAuthent
 		id:              clientID,
 		logger:          logger.WithField("client_id", clientID),
 		isAuthenticated: isAuthenticated,
+		metadata:        make(map[string]string),
 	}
 }
 
@@ -233,6 +235,16 @@ func (c *Client) WritePump() {
 // GetID returns the client's unique ID
 func (c *Client) GetID() string {
 	return c.id
+}
+
+// GetMetadata returns a specific metadata value
+func (c *Client) GetMetadata(key string) string {
+	return c.metadata[key]
+}
+
+// SetMetadata sets a metadata value
+func (c *Client) SetMetadata(key, value string) {
+	c.metadata[key] = value
 }
 
 // SendMessage sends a message to this client

@@ -6,8 +6,6 @@ import { useWeather } from '@/providers/weather-provider';
 import { useDashboard } from '@/providers/dashboard-provider';
 import { Button } from './ui/button';
 import { useRouter, usePathname } from 'next/navigation';
-import { Card, CardContent } from './ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Skeleton } from './ui/skeleton';
 import { Weather, WeatherDay } from '@/lib/types';
 import Image from 'next/image';
@@ -119,36 +117,13 @@ function WeatherDisplay({ weather, loading, isFireTV = false }: WeatherDisplayPr
     );
   }
 
-  const todayWeather = weather.days[0];
-
-  // Adjust sizing for Fire TV
-  const containerClasses = isFireTV
-    ? 'flex flex-col items-center bg-secondary/50 p-4 rounded-lg border border-border shadow-sm cursor-pointer hover:bg-secondary/70 transition-colors'
-    : 'flex flex-col items-center bg-secondary/50 p-3 rounded-lg border border-border shadow-sm cursor-pointer hover:bg-secondary/70 transition-colors';
-
-  // Adjust popover size for Fire TV
-  const popoverWidth = isFireTV ? 'w-[420px]' : 'w-[350px]';
-
   return (
     <div className="hidden md:block">
-      <Popover>
-        <PopoverTrigger asChild>
-          <div className={containerClasses}>
-            <CompactDayWeather day={todayWeather} isToday={true} isFireTV={isFireTV} />
-          </div>
-        </PopoverTrigger>
-        <PopoverContent className={`${popoverWidth} p-0`} align="center">
-          <Card>
-            <CardContent className="p-0">
-              <div className="flex overflow-x-auto scrollbar-thin">
-                {weather.days.slice(0, 7).map((day, index) => (
-                  <CompactDayWeather key={index} day={day} isToday={index === 0} isFireTV={isFireTV} />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </PopoverContent>
-      </Popover>
+      <div className="flex items-center gap-2">
+        {weather.days.map((day, index) => (
+          <CompactDayWeather key={index} day={day} isToday={index === 0} isFireTV={isFireTV} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -156,7 +131,7 @@ function WeatherDisplay({ weather, loading, isFireTV = false }: WeatherDisplayPr
 // Compact day weather for the forecast popover
 function CompactDayWeather({ day, isToday, isFireTV = false }: DayWeatherProps & { isToday: boolean }) {
   // Wider container for Fire TV
-  const containerWidth = isFireTV ? 'w-[170px]' : 'w-[140px]';
+  const containerWidth = 'w-[170px]';
   const containerPadding = isFireTV ? 'p-4' : 'p-3';
 
   // Larger text for Fire TV
@@ -170,8 +145,15 @@ function CompactDayWeather({ day, isToday, isFireTV = false }: DayWeatherProps &
   const iconWidth = isFireTV ? 40 : 32;
   const iconHeight = isFireTV ? 40 : 32;
 
+  // Convert wind direction from degrees to cardinal direction
+  const getWindDirection = (degrees: number) => {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const index = Math.round(degrees / 45) % 8;
+    return directions[index];
+  };
+
   return (
-    <div className={`flex-shrink-0 ${containerWidth} ${containerPadding} border-r last:border-r-0 border-border`}>
+    <div className={`flex-shrink-0 ${containerWidth} ${containerPadding} border-l last:border-r border-border`}>
       <div className="flex flex-col items-center">
         <span className={dateTextSize}>
           {isToday ? 'Today' : format(addDays(new Date(day.datetime), 1), 'EEE, M/d')}
@@ -195,7 +177,11 @@ function CompactDayWeather({ day, isToday, isFireTV = false }: DayWeatherProps &
 
         <div className={`flex justify-between w-full mt-1 ${detailsTextSize}`}>
           <span>Precip: {day.precipprob}%</span>
-          <span>Wind: {Math.round(day.windspeed)}</span>
+          <span>Humid: {Math.round(day.humidity)}%</span>
+        </div>
+
+        <div className={`flex justify-center w-full mt-1 ${detailsTextSize}`}>
+          <span>Wind: {Math.round(day.windspeed)} mph {getWindDirection(day.winddir)}</span>
         </div>
       </div>
     </div>

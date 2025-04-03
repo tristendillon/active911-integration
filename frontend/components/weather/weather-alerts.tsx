@@ -119,14 +119,14 @@ export default function WeatherAlerts({ isFireTV = false }: WeatherAlertsProps) 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
+  console.log(weather);
   return (
     <div className={cn(
       "h-full w-full overflow-hidden flex flex-col",
       isFireTV ? "p-3" : "p-2"
     )}>
       {loading && <LoadingWeatherAlerts isFireTV={isFireTV} />}
-      {!loading && !weather?.alerts && <NoWeatherAlerts isFireTV={isFireTV} />}
+      {!loading && weather?.alerts && weather.alerts.length === 0 && <NoWeatherAlerts isFireTV={isFireTV} />}
       {!loading && weather?.alerts && weather.alerts.length > 0 && (
         <div className="w-full flex items-center gap-2 justify-end flex-shrink-0">
           <CommandShortcut className={cn(
@@ -182,9 +182,7 @@ export default function WeatherAlerts({ isFireTV = false }: WeatherAlertsProps) 
                         }}
                       >
                         {alert.description.split('\n').map((line, i) => (
-                          <p key={i} className={cn(
-                            isFireTV ? "text-base" : ""
-                          )}>
+                          <p key={i}>
                             {line}
                           </p>
                         ))}

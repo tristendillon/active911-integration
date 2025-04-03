@@ -22,6 +22,7 @@ import (
 	"github.com/user/alerting/server/internal/models"
 	"github.com/user/alerting/server/internal/notification"
 	"github.com/user/alerting/server/internal/storage"
+	"github.com/user/alerting/server/internal/weather"
 	"github.com/user/alerting/server/internal/websocket"
 )
 
@@ -95,11 +96,13 @@ func main() {
 	authenticator := auth.New(cfg.Auth.APIPassword, logger)
 
 	// Initialize websocket hubs
-	alertsHub := websocket.NewHub(websocket.HubTypeAlerts, logger)
+	dashboardHub := websocket.NewHub(websocket.HubTypeDashboard, logger)
+	clientHub := websocket.NewHub(websocket.HubTypeClient, logger)
 	logsHub := websocket.NewHub(websocket.HubTypeLogs, logger)
 
 	// Start the hubs
-	go alertsHub.Run()
+	go dashboardHub.Run()
+	go clientHub.Run()
 	go logsHub.Run()
 
 	// Initialize router
@@ -125,15 +128,35 @@ func main() {
 	r.Use(loggerMiddleware.Logging)
 
 	// Register API routes
+	// Initialize weather service
+	if err := store.InitWeatherTable(); err != nil {
+		notifyService.NotifyFatal(err, "Failed to initialize weather table")
+		logger.Fatal(err, "Failed to initialize weather table")
+	}
+
+	// Create the weather service
+	weatherService := weather.NewService(cfg, dashboardHub, logger, store)
+
+	// Start the weather service
+	weatherService.Start()
+
+	// Initialize the weather handler
+	weatherHandler := api.NewWeatherHandler(weatherService)
+
+	// Create the API handler
 	apiHandler := api.New(store, logger, func(eventType string, data any) {
 		// Broadcast API events to websocket clients
-		alertsHub.BroadcastEvent(eventType, data)
+		dashboardHub.BroadcastEvent(eventType, data)
 	})
+
+	// Register routes
 	apiHandler.RegisterRoutes(r)
+	weatherHandler.RegisterRoutes(r)
 
 	// Register WebSocket handlers
-	wsHandler := websocket.NewHandler(alertsHub, logsHub, authenticator, logger)
-	r.HandleFunc("/ws/alerts", wsHandler.HandleAlertsConnection)
+	wsHandler := websocket.NewHandler(dashboardHub, clientHub, logsHub, authenticator, logger)
+	r.HandleFunc("/ws/dashboard", wsHandler.HandleDashboardConnection)
+	r.HandleFunc("/ws/client", wsHandler.HandleClientConnection)
 	r.HandleFunc("/ws/logs", wsHandler.HandleLogsConnection)
 
 	// Create a logger callback that can use the notifier
@@ -182,7 +205,8 @@ func main() {
 			logger.Error(err, "Failed to save WebSocket message log")
 		}
 	}
-	alertsHub.SetLogMessageCallback(logMessageCallback)
+	dashboardHub.SetLogMessageCallback(logMessageCallback)
+	clientHub.SetLogMessageCallback(logMessageCallback)
 	logsHub.SetLogMessageCallback(logMessageCallback)
 
 	// Setup HTTP server
@@ -214,6 +238,10 @@ func main() {
 	// Create shutdown context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
+
+	// Stop the weather service gracefully
+	logger.Info("Stopping weather service...")
+	weatherService.Stop()
 
 	// Shutdown server
 	if err := srv.Shutdown(ctx); err != nil {
@@ -275,4 +303,3 @@ func connectToDatabase(cfg *config.Config, logger *logging.Logger) (*sql.DB, err
 
 	return nil, fmt.Errorf("failed to ping database after %d attempts: %w", maxRetries, lastErr)
 }
-

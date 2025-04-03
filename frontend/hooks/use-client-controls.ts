@@ -1,16 +1,8 @@
 'use client';
 
-import type { Alert } from '@/lib/types';
-import EventEmitter from 'events';
-import { useEffect, useState, useRef, useCallback } from 'react';
-
-// Create singleton EventEmitter outside the hook to prevent multiple instances
-export const alertEmitter = new EventEmitter();
-// Increase max listeners to prevent potential warnings
-alertEmitter.setMaxListeners(20);
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Create a global connection tracker to prevent multiple connections
-// This helps with React.StrictMode double rendering in development
 const connectionTracker = {
   activeConnection: null as WebSocket | null,
   connectionId: 0,
@@ -50,20 +42,13 @@ const pingMessage = {
   type: 'ping',
 };
 
-interface UseAlertsOptions {
-  password?: string;
-  page?: number;
-  limit?: number;
+interface UseClientControlsOptions {
+  password: string;
 }
 
-export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
+export function useClientControls({ password }: UseClientControlsOptions) {
   const [isConnected, setIsConnected] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasNextPage, setHasNextPage] = useState(false);
-  const [total, setTotal] = useState(0);
-
+  
   // Track connection ID to ensure we only handle events from the current connection
   const connectionIdRef = useRef(0);
   // Track if component is mounted to avoid state updates after unmount
@@ -74,59 +59,6 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
   const maxReconnectAttempts = 5;
   const reconnectBaseDelay = 1000; // 1 second initial delay
 
-  const fetchAlerts = useCallback(async () => {
-    if (!isMountedRef.current) return;
-
-    try {
-      const queryParams = new URLSearchParams();
-      queryParams.set('limit', limit.toString());
-      queryParams.set('offset', ((page - 1) * limit).toString());
-      if (password) {
-        queryParams.set('password', password);
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?${queryParams.toString()}`, {
-        headers: {
-          'ngrok-skip-browser-warning': 'true',
-        },
-      });
-
-      if (!isMountedRef.current) return;
-
-      const data = await response.json();
-
-      console.log('Fetched alerts:', data);
-      const fetchedAlerts = data.data;
-      if (fetchedAlerts === null) {
-        setAlerts([]);
-      } else {
-        setAlerts(fetchedAlerts);
-      }
-
-      // Update pagination information based on API response
-      setHasNextPage(data.next !== null);
-      setTotal(data.total || 0);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching alerts:', error);
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [page, limit]);
-
-  useEffect(() => {
-    fetchAlerts();
-  }, [fetchAlerts, password]);
-
-  const nextPage = () => {
-    setPage((prev) => prev + 1);
-  };
-
-  const prevPage = () => {
-    setPage((prev) => Math.max(1, prev - 1));
-  };
-
   const cleanupWebSocket = useCallback(() => {
     // Clear any pending reconnection timeout
     if (reconnectTimeoutRef.current) {
@@ -134,6 +66,53 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
       reconnectTimeoutRef.current = null;
     }
   }, []);
+
+  const refreshClients = useCallback(() => {
+    if (!isConnected) {
+      console.warn('Cannot send refresh: WebSocket not connected');
+      return false;
+    }
+
+    if (!connectionTracker.activeConnection) {
+      console.warn('Cannot send refresh: No active connection');
+      return false;
+    }
+
+    try {
+      const message = {
+        type: 'refresh',
+      };
+      connectionTracker.activeConnection.send(JSON.stringify(message));
+      return true;
+    } catch (error) {
+      console.error('Error sending refresh command:', error);
+      return false;
+    }
+  }, [isConnected]);
+
+  const redirectClients = useCallback((url: string) => {
+    if (!isConnected) {
+      console.warn('Cannot send redirect: WebSocket not connected');
+      return false;
+    }
+
+    if (!connectionTracker.activeConnection) {
+      console.warn('Cannot send redirect: No active connection');
+      return false;
+    }
+
+    try {
+      const message = {
+        type: 'redirect',
+        content: { url },
+      };
+      connectionTracker.activeConnection.send(JSON.stringify(message));
+      return true;
+    } catch (error) {
+      console.error('Error sending redirect command:', error);
+      return false;
+    }
+  }, [isConnected]);
 
   const connectWebSocket = useCallback(() => {
     cleanupWebSocket();
@@ -144,9 +123,15 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     const attemptConnect = () => {
       if (!isMountedRef.current) return;
 
-      // Build WebSocket URL with current password
-      const queryParams = password ? `?password=${password}` : '';
-      const wsUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/dashboard${queryParams}`;
+      // Client control WebSocket requires authentication
+      if (!password) {
+        console.warn('Cannot connect to client control WebSocket: No password provided');
+        return;
+      }
+
+      // Build WebSocket URL with required password
+      const queryParams = `?password=${password}`;
+      const wsUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/client${queryParams}`;
 
       try {
         const websocket = new WebSocket(wsUrl);
@@ -158,7 +143,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
         websocket.onopen = () => {
           if (!isMountedRef.current || !connectionTracker.isActive(connectionId)) return;
 
-          console.log(`WebSocket connected (ID: ${connectionId})`);
+          console.log(`Client control WebSocket connected (ID: ${connectionId})`);
           setIsConnected(true);
           reconnectAttemptsRef.current = 0;
           connectionTracker.notifyListeners();
@@ -170,7 +155,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
             return;
           }
 
-          console.log(`WebSocket disconnected (ID: ${connectionId})`);
+          console.log(`Client control WebSocket disconnected (ID: ${connectionId})`);
 
           if (isMountedRef.current) {
             setIsConnected(false);
@@ -206,7 +191,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
         websocket.onerror = (error) => {
           if (!connectionTracker.isActive(connectionId)) return;
 
-          console.error(`WebSocket error (ID: ${connectionId}):`, error);
+          console.error(`Client control WebSocket error (ID: ${connectionId}):`, error);
           if (isMountedRef.current) {
             setIsConnected(false);
           }
@@ -219,20 +204,10 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
           try {
             const eventData = JSON.parse(event.data);
 
-            if (eventData.type === 'new_alert') {
-              const newAlert: Alert = eventData.content;
-              if (isMountedRef.current) {
-                setAlerts((prevAlerts) => [newAlert, ...prevAlerts]);
-                alertEmitter.emit(eventData.type, newAlert);
-              }
-            } else if (eventData.type === 'heartbeat') {
+            if (eventData.type === 'heartbeat') {
               websocket.send(JSON.stringify(pingMessage));
-            } else if (eventData.type === 'refresh') {
-              console.log('Refresh command received, reloading page...');
-              // Emit the refresh event so other components can react if needed
-              alertEmitter.emit('refresh');
-              // Refresh the page to get latest deployed changes
-              window.location.reload();
+            } else if (eventData.type === 'echo') {
+              console.log('Received echo from server:', eventData.content);
             }
           } catch (error) {
             console.error('Error processing WebSocket message:', error);
@@ -261,7 +236,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     };
   }, [cleanupWebSocket, password]);
 
-  // Initialize WebSocket and fetch alerts on mount
+  // Initialize WebSocket on mount
   useEffect(() => {
     isMountedRef.current = true;
 
@@ -287,50 +262,9 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     connectWebSocket();
   }, [password, connectWebSocket]);
 
-  // Handle visibility changes - reconnect when tab becomes visible
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isMountedRef.current) {
-        console.log('Page became visible, refreshing data and connection');
-        fetchAlerts();
-        // Only reconnect if we're not already connected
-        if (!connectionTracker.activeConnection || connectionTracker.activeConnection.readyState !== WebSocket.OPEN) {
-          connectWebSocket();
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [fetchAlerts, connectWebSocket, password]);
-
-  const emitListener = useCallback((eventName: string, listener: (...args: any[]) => void) => {
-    // Add the new listener without removing existing ones
-    alertEmitter.on(eventName, listener);
-    console.log(`Added listener for '${eventName}' event`);
-
-    // Return a cleanup function to remove the specific listener
-    return () => {
-      alertEmitter.removeListener(eventName, listener);
-      console.log(`Removed listener for '${eventName}' event`);
-    };
-  }, []);
-
   return {
-    alerts,
-    setAlerts,
-    loading,
-    emitListener,
     isConnected,
-    pagination: {
-      page,
-      nextPage,
-      prevPage,
-      hasNextPage,
-      total,
-    },
+    refreshClients,
+    redirectClients,
   };
 }

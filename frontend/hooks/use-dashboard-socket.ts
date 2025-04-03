@@ -5,12 +5,11 @@ import EventEmitter from 'events';
 import { useEffect, useState, useRef, useCallback } from 'react';
 
 // Create singleton EventEmitter outside the hook to prevent multiple instances
-export const alertEmitter = new EventEmitter();
+export const dashboardEmitter = new EventEmitter();
 // Increase max listeners to prevent potential warnings
-alertEmitter.setMaxListeners(20);
+dashboardEmitter.setMaxListeners(20);
 
 // Create a global connection tracker to prevent multiple connections
-// This helps with React.StrictMode double rendering in development
 const connectionTracker = {
   activeConnection: null as WebSocket | null,
   connectionId: 0,
@@ -50,13 +49,13 @@ const pingMessage = {
   type: 'ping',
 };
 
-interface UseAlertsOptions {
+interface UseDashboardSocketOptions {
   password?: string;
   page?: number;
   limit?: number;
 }
 
-export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
+export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketOptions = {}) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
@@ -113,11 +112,11 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
         setLoading(false);
       }
     }
-  }, [page, limit]);
+  }, [page, limit, password]);
 
   useEffect(() => {
     fetchAlerts();
-  }, [fetchAlerts, password]);
+  }, [fetchAlerts]);
 
   const nextPage = () => {
     setPage((prev) => prev + 1);
@@ -144,9 +143,13 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     const attemptConnect = () => {
       if (!isMountedRef.current) return;
 
-      // Build WebSocket URL with current password
-      const queryParams = password ? `?password=${password}` : '';
-      const wsUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/dashboard${queryParams}`;
+      // Build WebSocket URL with current password and station
+      const queryParams = new URLSearchParams();
+      if (password) {
+        queryParams.set('password', password);
+      }
+
+      const wsUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/dashboard?${queryParams.toString()}`;
 
       try {
         const websocket = new WebSocket(wsUrl);
@@ -158,7 +161,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
         websocket.onopen = () => {
           if (!isMountedRef.current || !connectionTracker.isActive(connectionId)) return;
 
-          console.log(`WebSocket connected (ID: ${connectionId})`);
+          console.log(`Dashboard WebSocket connected (ID: ${connectionId})`);
           setIsConnected(true);
           reconnectAttemptsRef.current = 0;
           connectionTracker.notifyListeners();
@@ -170,7 +173,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
             return;
           }
 
-          console.log(`WebSocket disconnected (ID: ${connectionId})`);
+          console.log(`Dashboard WebSocket disconnected (ID: ${connectionId})`);
 
           if (isMountedRef.current) {
             setIsConnected(false);
@@ -206,7 +209,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
         websocket.onerror = (error) => {
           if (!connectionTracker.isActive(connectionId)) return;
 
-          console.error(`WebSocket error (ID: ${connectionId}):`, error);
+          console.error(`Dashboard WebSocket error (ID: ${connectionId}):`, error);
           if (isMountedRef.current) {
             setIsConnected(false);
           }
@@ -223,16 +226,10 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
               const newAlert: Alert = eventData.content;
               if (isMountedRef.current) {
                 setAlerts((prevAlerts) => [newAlert, ...prevAlerts]);
-                alertEmitter.emit(eventData.type, newAlert);
+                dashboardEmitter.emit(eventData.type, newAlert);
               }
             } else if (eventData.type === 'heartbeat') {
               websocket.send(JSON.stringify(pingMessage));
-            } else if (eventData.type === 'refresh') {
-              console.log('Refresh command received, reloading page...');
-              // Emit the refresh event so other components can react if needed
-              alertEmitter.emit('refresh');
-              // Refresh the page to get latest deployed changes
-              window.location.reload();
             }
           } catch (error) {
             console.error('Error processing WebSocket message:', error);
@@ -281,7 +278,7 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     };
   }, [connectWebSocket]);
 
-  // Only reconnect when password changes
+  // Reconnect when params change
   useEffect(() => {
     if (!isMountedRef.current) return;
     connectWebSocket();
@@ -305,16 +302,16 @@ export function useAlerts({ password, limit = 10 }: UseAlertsOptions = {}) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchAlerts, connectWebSocket, password]);
+  }, [fetchAlerts, connectWebSocket]);
 
   const emitListener = useCallback((eventName: string, listener: (...args: any[]) => void) => {
     // Add the new listener without removing existing ones
-    alertEmitter.on(eventName, listener);
+    dashboardEmitter.on(eventName, listener);
     console.log(`Added listener for '${eventName}' event`);
 
     // Return a cleanup function to remove the specific listener
     return () => {
-      alertEmitter.removeListener(eventName, listener);
+      dashboardEmitter.removeListener(eventName, listener);
       console.log(`Removed listener for '${eventName}' event`);
     };
   }, []);

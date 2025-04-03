@@ -47,28 +47,37 @@ export interface WeatherAlert {
   description: string;
 }
 
+export interface WeatherHour {
+
+  conditions: string;
+  datetime: string;
+  humidity: number;
+  icon: string;
+  precipprob: number;
+  temp: number;
+  winddir: number;
+  windspeed: number;
+}
+
 export interface WeatherDay {
-  datetime: string; // Changed from date to datetime
+  datetime: string;
+  conditions: string;
+  description: string;
+  hours: WeatherHour[];
+  humidity: number;
+  icon: string;
+  precipprob: number;
+  temp: number;
   tempmax: number;
   tempmin: number;
-  temp: number;
-  feelslikemax: number; // Added feelslikemax
-  feelslikemin: number; // Added feelslikemin
-  feelslike: number; // Added feelslike
-  precip: number; // Added precip
-  precipprob: number; // Added precipprob
-  precipcover: number; // Added precipcover
-  preciptype: string | string[] | null; // Added preciptype
-  windspeed: number; // Added windspeed
-  cloudcover: number; // Added cloudcover
-  visibility: number; // Added visibility
-  conditions: string; // Added conditions
-  icon: string; // Added icon
+  winddir: number;
+  windspeed: number;
 }
 
 export interface Weather {
   address: string;
   resolvedAddress: string;
+  currentConditions: WeatherHour
   latitude: number;
   longitude: number;
   timezone: string;
