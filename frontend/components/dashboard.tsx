@@ -15,7 +15,7 @@ export default function Dashboard() {
   console.log(map.zoom)
   return (
     <div className="w-full h-screen">
-      <div className={isFireTV || isSilk ? "scale-[0.75] origin-top-left w-[150%] h-[150%]": "w-full h-full"}>
+      <div className={isFireTV || isSilk ? "scale-[0.5] origin-top-left w-[200%] h-[200%]": "w-full h-full"}>
         <NewAlertPopover sound={sound} />
         <div className="h-full w-full flex">
           <div className="grid w-1/2 bg-secondary grid-cols-5 h-full">
@@ -23,7 +23,7 @@ export default function Dashboard() {
           </div>
           <div className="w-full h-full block">
             <Header />
-            <div className={cn("w-full relative h-[calc(100vh-150px)]", isFireTV || isSilk && "h-[calc(150vh-150px)]")}>
+            <div className={cn("w-full relative h-[calc(100%-150px)]", isFireTV || isSilk && "h-[calc(200%-150px)]")}>
               <GoogleMapComponent center={map.center} zoom={map.zoom} markers={map.markers} />
             </div>
           </div>
