@@ -19,11 +19,11 @@ export default function useAmazonDevice() {
       setUserAgent(ua);
 
       // Check for Amazon Silk browser
-      const silkMatch = /silk/i.test(ua);
+      const silkMatch = /Silk/i.test(ua);
       setIsSilk(silkMatch);
 
       // Check for Fire TV Stick
-      const fireTVMatch = /AFTM|AFT[BDIKMNRS]|AFTA|AFTS|AFTB|AFTT|AFTN|FireTV/i.test(ua);
+      const fireTVMatch = /AFTM|AFT[BDIKMNRS]|AFTA|AFTS|AFTB|AFTT|AFTN|AFTSS|FireTV/i.test(ua);
       setIsFireTV(fireTVMatch);
       // Set overall Amazon device flag
       setIsAmazonDevice(silkMatch || fireTVMatch);

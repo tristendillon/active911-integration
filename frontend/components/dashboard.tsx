@@ -34,7 +34,7 @@ export default function Dashboard() {
       <div>ua {userAgent}</div>
       <NewAlertPopover sound={sound} />
       <div className="h-full w-full flex">
-        <div className="hidden md:grid md:w-1/2 bg-secondary md:grid-cols-5 h-screen overflow-hidden">
+        <div className="grid w-1/2 bg-secondary grid-cols-5 h-screen overflow-hidden">
           <Sidebar isFireTV={isFireTV} />
         </div>
         <div className="w-full h-full block">
