@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import Header from './header';
 import NewAlertPopover from './alert-popover/new-alert-popover';
 import { GoogleMapComponent } from './google-map-component';
@@ -9,6 +9,22 @@ import Sidebar from './sidebar';
 
 export default function Dashboard() {
   const { sound, map } = useDashboard();
+  useEffect(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isFireTV = userAgent.includes("aft");
+    const isSilk = userAgent.includes("silk");
+
+    if (isFireTV || isSilk) {
+      let viewport = document.querySelector('meta[name="viewport"]');
+      if (!viewport) {
+        viewport = document.createElement('meta');
+        viewport.setAttribute("name", "viewport");
+        document.head.appendChild(viewport);
+      }
+      console.log("IFRAME CHANGE VIEWPORT")
+      viewport.setAttribute('content', 'width=device-width, initial-scale=0.5, user-scalable=no');
+    }
+  }, []);
 
   // Original layout for other devices
   return (

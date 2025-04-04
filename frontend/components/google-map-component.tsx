@@ -41,7 +41,6 @@ export function GoogleMapComponent({ center = defaultMapCenter, zoom = 20, class
 
     // Reset directions when markers change
     setDirections(null);
-    console.log(markers);
     if (markers && markers.length === 2) {
       const directionsService = new google.maps.DirectionsService();
 
