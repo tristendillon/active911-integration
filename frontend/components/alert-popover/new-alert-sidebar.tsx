@@ -1,5 +1,6 @@
 'use client';
 
+import useAmazonDevice from '@/hooks/use-amazon-device';
 import type { Alert } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import React from 'react';
@@ -7,11 +8,11 @@ import React from 'react';
 interface NewAlertSidebarProps {
   alert: Alert;
   units: string[];
-  isFireTV?: boolean;
 }
 
-export default function NewAlertSidebar({ alert, units, isFireTV = false }: NewAlertSidebarProps) {
+export default function NewAlertSidebar({ alert, units }: NewAlertSidebarProps) {
   // Format timestamp if available
+  const { isFireTV } = useAmazonDevice()
   const formatTimestamp = (timestamp: number) => {
     if (!timestamp) return '';
 
