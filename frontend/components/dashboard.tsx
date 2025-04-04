@@ -25,24 +25,25 @@ export default function Dashboard() {
   }, []);
 
   // Original layout for other devices
-  
+
   return (
-    <div>
-      <NewAlertPopover sound={sound} />
-      <div className="block lg:hidden">
-        <Header />
+  <div className={`${isFireTV || isSilk || true ? 'scale-[0.5]] origin-top-left' : ''}`}>
+    <NewAlertPopover sound={sound} />
+    <div className="block lg:hidden">
+      <Header />
+    </div>
+    <div className="h-full w-full flex">
+      <div className="w-1/2 bg-secondary grid grid-cols-1 md:grid-cols-5 h-screen overflow-hidden">
+        <Sidebar />
       </div>
-      <div className="h-full w-full flex flex-col lg:flex-row">
-        <div className="w-1/2 bg-secondary grid grid-cols-1 md:grid-cols-5 h-screen overflow-hidden">
-          <Sidebar />
-        </div>
-        <div className="w-full h-full hidden lg:block">
-          <Header />
-          <div className="w-full h-full relative">
-            <GoogleMapComponent center={map.center} zoom={map.zoom} markers={map.markers} />
-          </div>
+      <div className="w-full h-full block">
+        <Header />
+        <div className="w-full h-full relative">
+          <GoogleMapComponent center={map.center} zoom={map.zoom} markers={map.markers} />
         </div>
       </div>
     </div>
-  );
+  </div>
+);
+
 }
