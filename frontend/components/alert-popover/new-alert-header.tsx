@@ -3,6 +3,7 @@
 import type { Alert } from '@/lib/types';
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import useAmazonDevice from '@/hooks/use-amazon-device';
 
 interface NewAlertHeaderProps {
   alert: Alert;
@@ -13,7 +14,7 @@ interface NewAlertHeaderProps {
 
 export default function NewAlertHeader({ alert, onDismiss, autoCloseTime, isFireTV = false }: NewAlertHeaderProps) {
   const [elapsedMs, setElapsedMs] = useState(0);
-
+  const {isAmazonDevice} = useAmazonDevice()
   useEffect(() => {
     const startTime = Date.now();
 
@@ -79,9 +80,11 @@ export default function NewAlertHeader({ alert, onDismiss, autoCloseTime, isFire
           </div>
 
           {/* Dismiss button */}
-          <button className={cn('bg-primary text-primary-foreground rounded hover:bg-primary/90', isFireTV ? 'px-4 py-2 text-base' : 'px-3 py-1.5 text-sm')} onClick={onDismiss}>
-            Dismiss
-          </button>
+          {!isAmazonDevice && (
+            <button className={cn('bg-primary text-primary-foreground rounded hover:bg-primary/90', isFireTV ? 'px-4 py-2 text-base' : 'px-3 py-1.5 text-sm')} onClick={onDismiss}>
+              Dismiss
+            </button>
+          )}
         </div>
       </div>
     </header>

@@ -3,9 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { format, addDays } from 'date-fns';
 import { useWeather } from '@/providers/weather-provider';
-import { useDashboard } from '@/providers/dashboard-provider';
-import { Button } from './ui/button';
-import { useRouter, usePathname } from 'next/navigation';
 import { Skeleton } from './ui/skeleton';
 import { Weather, WeatherDay } from '@/lib/types';
 import Image from 'next/image';
@@ -27,11 +24,6 @@ interface DayWeatherProps {
   isFireTV?: boolean;
 }
 
-interface SoundToggleProps {
-  sound: boolean;
-  toggleSound: () => void;
-  isFireTV?: boolean;
-}
 
 interface HeaderProps {
   isFireTV?: boolean;
@@ -40,9 +32,6 @@ interface HeaderProps {
 export default function Header({ isFireTV = false }: HeaderProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { weather, loading } = useWeather();
-  const { sound } = useDashboard();
-  const router = useRouter();
-  const pathname = usePathname();
 
   // Update the clock every second
   useEffect(() => {
@@ -52,13 +41,6 @@ export default function Header({ isFireTV = false }: HeaderProps) {
 
     return () => clearInterval(interval);
   }, []);
-
-  // Toggle sound function
-  const toggleSound = () => {
-    const searchParams = new URLSearchParams(window.location.search);
-    searchParams.set('sound', sound ? 'off' : 'on');
-    router.push(`${pathname}?${searchParams.toString()}`);
-  };
 
   // Adjust header height based on device type
   const headerHeight = isFireTV ? 'h-[180px]' : 'h-[150px]';
@@ -74,11 +56,6 @@ export default function Header({ isFireTV = false }: HeaderProps) {
 
           {/* Weather Information */}
           <WeatherDisplay weather={weather} loading={loading} isFireTV={isFireTV} />
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Sound Toggle Button */}
-          <SoundToggle sound={sound} toggleSound={toggleSound} isFireTV={isFireTV} />
         </div>
       </div>
     </header>
@@ -212,55 +189,5 @@ function WeatherSkeleton({ isFireTV = false }: { isFireTV?: boolean }) {
         </div>
       </div>
     </div>
-  );
-}
-function SoundToggle({ sound, toggleSound, isFireTV = false }: SoundToggleProps) {
-  // Adjust button size, icon size, and text for Fire TV
-  const buttonSize = isFireTV ? 'sm' : 'lg';
-  const iconSize = isFireTV ? 'h-5 w-5' : 'h-4 w-4';
-  const buttonPadding = isFireTV ? 'px-3' : '';
-
-  return (
-    <div className="flex items-center gap-2">
-      <Button
-        variant={sound ? 'default' : 'outline'}
-        size={buttonSize}
-        onClick={toggleSound}
-        className={`flex items-center gap-2 transition-all duration-200 ${buttonPadding} ${sound ? 'bg-primary hover:bg-primary/90' : ''}`}
-      >
-        {sound ? (
-          <>
-            <SoundOnIcon className={iconSize} />
-            <span className={isFireTV ? 'inline' : 'hidden sm:inline'}>Sound On</span>
-          </>
-        ) : (
-          <>
-            <SoundOffIcon className={iconSize} />
-            <span className={isFireTV ? 'inline' : 'hidden sm:inline'}>Sound Off</span>
-          </>
-        )}
-      </Button>
-    </div>
-  );
-}
-
-// Icon components
-function SoundOnIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
-  );
-}
-
-function SoundOffIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-      <line x1="23" y1="9" x2="17" y2="15" />
-      <line x1="17" y1="9" x2="23" y2="15" />
-    </svg>
   );
 }
