@@ -48,7 +48,7 @@ export function DashboardProvider({
   center = { lat: 39.19319752935804, lng: -96.58534125130507 }, // Default to Manhattan, KS
   sound = 'on',
   markers = [],
-  zoom = 14,
+  zoom = 17,
 }: DashboardProviderProps) {
   const [isNewAlert, setIsNewAlert] = useState(false);
 

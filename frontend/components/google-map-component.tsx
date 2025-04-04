@@ -84,7 +84,7 @@ export function GoogleMapComponent({ center = defaultMapCenter, zoom = 20, class
   }, [map, markers, center, zoom]);
 
   return (
-    <div className={cn(`w-full h-[calc(100vh-150px)]`, className)}>
+    <div className={cn(`w-full h-full`, className)}>
       <GoogleMap
         onLoad={onLoad}
         mapContainerStyle={defaultMapContainerStyle}
