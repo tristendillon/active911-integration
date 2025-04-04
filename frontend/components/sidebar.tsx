@@ -5,6 +5,7 @@ import React from 'react';
 import AlertItem from './alert-item';
 import WeatherAlerts from './weather/weather-alerts';
 import { motion } from 'motion/react';
+import { useWeather } from '@/providers/weather-provider';
 
 interface SidebarProps {
   isFireTV?: boolean;
@@ -12,10 +13,9 @@ interface SidebarProps {
 
 export default function Sidebar({ isFireTV = false }: SidebarProps) {
   const { alerts, units } = useDashboard();
-
+  const {weather, loading} = useWeather()
   const padding = isFireTV ? "p-3" : "p-2";
   const gap = isFireTV ? "gap-3" : "gap-2";
-
   return (
     <div className="h-full w-full flex flex-col">
       <motion.div
@@ -29,10 +29,11 @@ export default function Sidebar({ isFireTV = false }: SidebarProps) {
             <AlertItem key={alert.alert.id} units={units} alert={alert} isFireTV={false} />
           ))}
       </motion.div>
-
-      <div className="flex md:col-span-2 md:row-span-2 border-r border-b border-border h-full md:max-h-none overflow-hidden">
-        <WeatherAlerts isFireTV={false} />
-      </div>
+      {!loading && weather?.alerts && weather?.alerts.length !== 0 && (
+        <div className="flex md:col-span-2 md:row-span-2 border-r border-b border-border h-full md:max-h-none overflow-hidden">
+          <WeatherAlerts weather={weather} loading={loading} />
+        </div>
+      )}
     </div>
   );
 }

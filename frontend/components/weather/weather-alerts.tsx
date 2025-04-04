@@ -1,22 +1,21 @@
 'use client';
 
-import { useWeather } from '@/providers/weather-provider';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Autoplay from 'embla-carousel-autoplay';
 import { useEffect, useRef, useState } from 'react';
 import { LoadingWeatherAlerts } from './loading-weather-alerts';
-import { NoWeatherAlerts } from './no-weather-alerts';
 import { CommandShortcut } from '../ui/command';
 import { cn } from '@/lib/utils';
+import type { Weather } from '@/lib/types';
 
 const AUTO_SCROLL_DELAY = 90;
 interface WeatherAlertsProps {
-  isFireTV?: boolean;
+  weather: Weather | null
+  loading: boolean
 }
 
-export default function WeatherAlerts({ isFireTV = false }: WeatherAlertsProps) {
-  const { weather, loading } = useWeather();
+export default function WeatherAlerts({ weather, loading }: WeatherAlertsProps) {
   const [current, setCurrent] = useState(0);
   const [api, setApi] = useState<CarouselApi | null>(null);
   const plugin = useRef(Autoplay({ delay: AUTO_SCROLL_DELAY * 1000, stopOnInteraction: true }));
@@ -119,60 +118,37 @@ export default function WeatherAlerts({ isFireTV = false }: WeatherAlertsProps) 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  console.log(weather);
+  if (loading) {
+    return <LoadingWeatherAlerts />
+  }
   return (
-    <div className={cn(
-      "h-full w-full overflow-hidden flex flex-col",
-      isFireTV ? "p-3" : "p-2"
-    )}>
-      {loading && <LoadingWeatherAlerts isFireTV={isFireTV} />}
-      {!loading && weather?.alerts && weather.alerts.length === 0 && <NoWeatherAlerts isFireTV={isFireTV} />}
-      {!loading && weather?.alerts && weather.alerts.length > 0 && (
+    <div className="h-full w-full overflow-hidden flex flex-col p-2">
         <div className="w-full flex items-center gap-2 justify-end flex-shrink-0">
-          <CommandShortcut className={cn(
-            isFireTV ? "text-base" : "text-sm"
-          )}>
+          <CommandShortcut className="text-sm">
             {formattedTime}
           </CommandShortcut>
         </div>
-      )}
       {!loading && weather?.alerts && weather.alerts.length > 0 && (
         <Carousel setApi={setApi} className="flex flex-col w-full h-full overflow-hidden flex-grow" plugins={[plugin.current]}>
           <CarouselContent className="flex h-full">
             {weather.alerts.map((alert, alertIndex) => (
               <CarouselItem key={alert.id} className="h-full">
-                <Card className={cn(
-                  "flex flex-col h-full overflow-hidden py-0 md:py-2 lg:py-4",
-                  isFireTV ? "gap-1" : "gap-2 md:gap-4 lg:gap-6"
-                )}>
-                  <CardHeader className={cn(
-                    "flex-shrink-0",
-                    isFireTV ? "p-3" : "p-2"
-                  )}>
+                <Card className="flex flex-col h-full overflow-hidden py-0 gap-2 md:gap-4 lg:gap-6">
+                  <CardHeader className="flex-shrink-0 p-2">
                     <div className="flex justify-between items-start">
-                      <CardTitle className={cn(
-                        isFireTV ? "text-base sm:text-lg" : "text-sm sm:text-base"
-                      )}>
+                      <CardTitle className="text-sm sm:text-base">
                         {alert.event}
                       </CardTitle>
                     </div>
-                    <CardDescription className={cn(
-                      isFireTV ? "text-sm sm:text-base" : "text-xs sm:text-sm"
-                    )}>
+                    <CardDescription className="text-xs sm:text-sm">
                       {alert.headline}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className={cn(
-                    "flex-grow flex flex-col overflow-hidden",
-                    isFireTV ? "p-1" : "p-2"
-                  )}>
+                  <CardContent className="flex-grow flex flex-col overflow-hidden p-2">
                     <div className="flex flex-col h-full overflow-hidden">
                       <div
                         id="auto-scroll"
-                        className={cn(
-                          "flex flex-col mt-2 overflow-y-hidden flex-grow",
-                          isFireTV ? "gap-2 sm:gap-3" : "gap-1 sm:gap-2"
-                        )}
+                        className="flex flex-col mt-2 overflow-y-hidden flex-grow gap-1 sm:gap-2"
                         ref={(el) => {
                           scrollContainerRefs.current[alertIndex] = el;
                         }}
@@ -196,8 +172,7 @@ export default function WeatherAlerts({ isFireTV = false }: WeatherAlertsProps) 
           <div className="flex justify-center gap-2 mt-2 flex-shrink-0">
             {weather.alerts.map((_, index) => (
               <div key={index} className={cn(
-                "rounded-full transition-colors",
-                isFireTV ? "h-3 w-3" : "h-2 w-2",
+                "rounded-full transition-colors h-2 w-2",
                 current === index ? "bg-primary" : "bg-primary/30"
               )} />
             ))}
