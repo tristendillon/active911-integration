@@ -11,23 +11,23 @@ import useAmazonDevice from '@/hooks/use-amazon-device';
 export default function Dashboard() {
   const { sound, map } = useDashboard();
   const { isFireTV, isSilk } = useAmazonDevice()
-  useEffect(() => {
-    if (isFireTV || isSilk || true) {
-      let viewport = document.querySelector('meta[name="viewport"]');
-      if (!viewport) {
-        viewport = document.createElement('meta');
-        viewport.setAttribute("name", "viewport");
-        document.head.appendChild(viewport);
-      }
-      console.log("IFRAME CHANGE VIEWPORT")
-      viewport.setAttribute('content', 'width=device-width, initial-scale=0.5, user-scalable=no');
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (isFireTV || isSilk || true) {
+  //     let viewport = document.querySelector('meta[name="viewport"]');
+  //     if (!viewport) {
+  //       viewport = document.createElement('meta');
+  //       viewport.setAttribute("name", "viewport");
+  //       document.head.appendChild(viewport);
+  //     }
+  //     console.log("IFRAME CHANGE VIEWPORT")
+  //     viewport.setAttribute('content', 'width=device-width, initial-scale=0.5, user-scalable=no');
+  //   }
+  // }, []);
 
   // Original layout for other devices
 
   return (
-  <div className={`${isFireTV || isSilk || true ? 'scale-[0.5]] origin-top-left' : ''}`}>
+  <div className={`${isFireTV || isSilk || true ? 'scale-[0.5] origin-top-left' : ''}`}>
     <NewAlertPopover sound={sound} />
     <div className="h-full w-full flex">
       <div className="w-1/2 bg-secondary grid grid-cols-1 md:grid-cols-5 h-screen overflow-hidden">
