@@ -2,7 +2,6 @@
 
 import { useRef, useEffect, useState } from 'react';
 import {  useClientListener } from '@/hooks/use-client-listener';
-import useAmazonDevice from '@/hooks/use-amazon-device';
 
 interface DashboardContainerProps {
   password: string;
