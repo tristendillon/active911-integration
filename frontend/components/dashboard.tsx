@@ -29,8 +29,8 @@ export default function Dashboard() {
 
   return (
     <>
-      <div>IS firetv {isFireTV}</div>
-      <div>Is silk {isSilk}</div>
+      <div>IS firetv {String(isFireTV)}</div>
+      <div>Is silk {String(isSilk)}</div>
       <div>ua {userAgent}</div>
       <NewAlertPopover sound={sound} />
       <div className="h-full w-full flex">
