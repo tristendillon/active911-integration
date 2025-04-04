@@ -29,9 +29,6 @@ export default function Dashboard() {
   return (
   <div className={`${isFireTV || isSilk || true ? 'scale-[0.5]] origin-top-left' : ''}`}>
     <NewAlertPopover sound={sound} />
-    <div className="block lg:hidden">
-      <Header />
-    </div>
     <div className="h-full w-full flex">
       <div className="w-1/2 bg-secondary grid grid-cols-1 md:grid-cols-5 h-screen overflow-hidden">
         <Sidebar />
