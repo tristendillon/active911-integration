@@ -19,7 +19,6 @@ export default function Sidebar({ isFireTV = false }: SidebarProps) {
   // Adjust padding and spacing for Fire TV
   const padding = isFireTV ? "p-3" : "p-2";
   const gap = isFireTV ? "gap-3" : "gap-2";
-  const weatherAlertHeight = isFireTV ? "h-[35vh]" : "h-[30vh]";
   const alertsHeight = isFireTV ? "h-[75vh]" : "h-[70vh]";
 
 
