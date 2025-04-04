@@ -86,11 +86,11 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 200 }}
         >
-          <div className="bg-secondary h-screen w-full flex flex-col">
+          <div className="bg-secondary h-full w-full flex flex-col">
             <NewAlertHeader alert={currentAlert} onDismiss={dismissAlert} autoCloseTime={MAX_NEW_ALERT_TIME / 1000} />
             <div className="flex-1 flex flex-col h-[calc(100vh-10rem)] md:flex-row">
               <NewAlertSidebar alert={currentAlert} units={units} />
-              <div className="md:h-auto md:flex-1 relative h-[60vh]">/
+              <div className="md:h-auto md:flex-1 relative h-[60vh]">
                 <NewAlertMap alert={currentAlert} center={map.center} />
 {/*                 <div className={cn('absolute bottom-2 right-2 bg-secondary/70 rounded-md', isFireTV ? 'w-2/5 p-3' : 'w-1/2 p-2')}>
                   {alerts.data

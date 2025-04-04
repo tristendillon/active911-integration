@@ -84,7 +84,7 @@ func New() *Config {
 			User:     getEnv("DB_USER", "alerting"),
 			Password: getEnv("DB_PASSWORD", "alerting"),
 			Name:     getEnv("DB_NAME", "alerting"),
-			SSLMode:  getEnv("DB_SSL_MODE", "require"),
+			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
 		},
 		Auth: AuthConfig{
 			APIPassword: getEnv("API_PASSWORD", ""),

@@ -101,10 +101,9 @@ export function DashboardProvider({
       }}
     >
       {children}
-      <div className="absolute top-1 right-1 p-4 flex flex-col gap-1">
+      <div className="absolute top-0 right-0 p-4 flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <div className={`w-3 h-3 rounded-full ${dashboardConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-          <p>Dashboard: {dashboardConnected ? 'Connected' : 'Disconnected'}</p>
         </div>
       </div>
     </DashboardContext.Provider>
