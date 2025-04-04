@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import {  useClientListener } from '@/hooks/use-client-listener';
+import { useClientListener } from '@/hooks/use-client-listener';
+import useAmazonDevice from '@/hooks/use-amazon-device';
 
 interface DashboardContainerProps {
   password: string;
@@ -16,7 +17,11 @@ interface DashboardContainerProps {
 
 export default function DashboardContainer({ password, station, sound }: DashboardContainerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const url = station ? `${process.env.NEXT_PUBLIC_URL}/${password}/d/${station.id}?sound=${sound ? 'on' : 'off'}` : `${process.env.NEXT_PUBLIC_URL}/${password}/d?sound=${sound ? 'on' : 'off' }`;
+  const { isFireTV, isSilk } = useAmazonDevice();
+  const deviceParam = (isFireTV || isSilk) ? '&amazon=true' : '';
+  const url = station 
+    ? `${process.env.NEXT_PUBLIC_URL}/${password}/d/${station.id}?sound=${sound ? 'on' : 'off'}${deviceParam}` 
+    : `${process.env.NEXT_PUBLIC_URL}/${password}/d?sound=${sound ? 'on' : 'off'}${deviceParam}`;
   const [iframeSrc, setIframeSrc] = useState(url);
   const { emitListener } = useClientListener({ password });
 
