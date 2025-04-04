@@ -6,7 +6,6 @@ import NewAlertHeader from './new-alert-header';
 import NewAlertSidebar from './new-alert-sidebar';
 import NewAlertMap from './new-alert-map';
 import { useAlertAudio } from '@/hooks/use-alert-audio';
-// import AlertItem from '../alert-item';
 
 const MAX_NEW_ALERT_TIME = 120 * 1000; // 3 minutes
 const ANIMATION_DELAY = 1500; // 1.5 seconds
@@ -57,7 +56,7 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
       clearTimeout(animationTimeoutRef.current!);
       stopSound();
     };
-  }, [setIsNewAlert, playSound, stopSound]);
+  }, [setIsNewAlert, playSound, stopSound, emitListener]);
 
   /** Auto-dismiss after timeout */
   useEffect(() => {
