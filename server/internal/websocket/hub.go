@@ -95,9 +95,9 @@ func (h *Hub) BroadcastEventToStation(eventType string, content any, station str
 		h.logger.Warnf("Attempted to broadcast station-specific event on non-dashboard hub")
 		return
 	}
-	
+
 	h.logger.Infof("Broadcasting %s event to clients for station %s", eventType, station)
-	
+
 	// Check if the content needs redaction based on event type
 	if content != nil && (eventType == "new_alert") {
 		// Handle both pointer and value types
@@ -117,7 +117,7 @@ func (h *Hub) BroadcastEventToStation(eventType string, content any, station str
 				return
 			}
 		}
-		
+
 		// Handle each client individually
 		for c := range h.clients {
 			// Filter by station if specified
@@ -126,13 +126,13 @@ func (h *Hub) BroadcastEventToStation(eventType string, content any, station str
 				// Skip clients not subscribed to this station
 				continue
 			}
-			
+
 			var clientContent *models.Alert
 
 			if !c.isAuthenticated {
 				// Create a deep copy for redaction
 				alertCopy := models.DeepCopyAlert(*alert)
-				clientContent = auth.RedactAlertData(&alertCopy, false)
+				clientContent = auth.RedactAlertData(&alertCopy)
 			} else {
 				clientContent = alert
 			}
@@ -179,7 +179,7 @@ func (h *Hub) BroadcastEventToStation(eventType string, content any, station str
 				// Skip clients not subscribed to this station
 				continue
 			}
-			
+
 			select {
 			case client.send <- msg:
 			default:
@@ -221,7 +221,7 @@ func (h *Hub) BroadcastEvent(eventType string, content any) {
 			if !c.isAuthenticated {
 				// Create a deep copy for redaction
 				alertCopy := models.DeepCopyAlert(*alert)
-				clientContent = auth.RedactAlertData(&alertCopy, false)
+				clientContent = auth.RedactAlertData(&alertCopy)
 			} else {
 				clientContent = alert
 			}

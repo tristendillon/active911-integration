@@ -4,7 +4,7 @@ import { GoogleMap, MarkerF, DirectionsRenderer } from '@react-google-maps/api';
 import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useState } from 'react';
 import { useMap } from '@/providers/map-provider';
-//Map's styling
+import { TrafficLayer } from '@react-google-maps/api';
 export const defaultMapContainerStyle = {
   width: '100%',
   height: '100%',
@@ -101,14 +101,19 @@ export function GoogleMapComponent({ center = defaultMapCenter, zoom = 20, class
           disableDefaultUI: true
         }}
       >
+        <TrafficLayer options={{
+          autoRefresh: true,
+        }} />
         {/* Only show markers if we're not showing directions */}
         {markers?.map((marker) => <MarkerF key={`${marker.lat}-${marker.lng}`} position={marker} />)}
 
         {/* Show directions if available */}
         {showDirections && directions && (
           <DirectionsRenderer
+
             directions={directions}
             options={{
+
               suppressMarkers: true,
               polylineOptions: {
                 strokeColor: '#FF6666',

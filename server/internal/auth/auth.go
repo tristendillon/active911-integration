@@ -104,88 +104,167 @@ func GetAuthInfoFromContext(ctx context.Context) (AuthInfo, bool) {
 	return AuthInfo{}, false
 }
 
+// RedactionLevel defines the level of redaction to apply
+type RedactionLevel int
+
+const (
+	// NormalRedaction redacts always redacted fields only
+	NormalRedaction RedactionLevel = iota
+	// PartialRedaction redacts more fields, primarily location data
+	PartialRedaction
+	// FullRedaction redacts the entire alert other than timestamp and ID
+	FullRedaction
+)
+
 var alwaysRedactedFields = []string{
 	"Details",
 }
 
-var redactedFields = []string{
+// Additional fields to redact in partial redaction mode
+var partialRedactedFields = []string{
 	"CrossStreet",
 	"MapAddress",
 	"Place",
 	"DispatchCoords",
+	"City",
+	"State",
+	"CoordinateSource",
+	"Lat",
+	"Lon",
+}
+
+// Fields to preserve in full redaction mode (everything else is redacted)
+var preservedFieldsInFullRedaction = []string{
+	"ID",
+	"Stamp",
+	"Status",
 }
 
 var redactedDescriptors = []string{
 	"med",
 }
+var fullRedactedDescriptors = []string{
+	"rape",
+	"gun",
+	"stab",
+}
 
-func RedactAlertData(alert *models.Alert, keepCoordinates bool) *models.Alert {
-	// Create a deep copy of the alert to avoid modifying the original
-	redactedAlert := *alert // Copy the top level struct
-
-	// First determine if we need to redact sensitive fields based on the description
-	needsRedaction := false
+func RedactAlertData(alert *models.Alert) *models.Alert {
+	// Determine redaction level based on description
+	level := NormalRedaction
 
 	// Check if Description is nil before dereferencing
 	if alert.Alert.Description != nil {
 		descriptor := *alert.Alert.Description
 		for _, redactedDescriptor := range redactedDescriptors {
 			if strings.Contains(strings.ToLower(descriptor), redactedDescriptor) {
-				needsRedaction = true
+				// Medical calls get partial redaction by default
+				level = PartialRedaction
+				break
+			}
+		}
+		for _, fullRedactedDescriptor := range fullRedactedDescriptors {
+			if strings.Contains(strings.ToLower(descriptor), fullRedactedDescriptor) {
+				// Medical calls get partial redaction by default
+				level = FullRedaction
 				break
 			}
 		}
 	}
 
+	return RedactAlertDataWithLevel(alert, level)
+}
+
+// RedactAlertDataWithLevel applies redaction to an alert based on the specified redaction level
+func RedactAlertDataWithLevel(alert *models.Alert, level RedactionLevel) *models.Alert {
+	// Create a deep copy of the alert to avoid modifying the original
+	redactedAlert := *alert // Copy the top level struct
+
 	// Prepare the reflection to access fields
 	alertValue := reflect.ValueOf(&redactedAlert.Alert).Elem()
 
-	// Always redact the fields in alwaysRedactedFields regardless of description
-	for _, field := range alwaysRedactedFields {
-		fieldValue := alertValue.FieldByName(field)
-		if fieldValue.IsValid() && fieldValue.CanSet() {
-			// Handle different types of fields
-			switch fieldValue.Kind() {
-			case reflect.String:
-				fieldValue.SetString("[Redacted]")
-			case reflect.Ptr:
-				// Handle string pointers
-				if !fieldValue.IsNil() && fieldValue.Elem().Kind() == reflect.String {
-					fieldValue.Elem().SetString("[Redacted]")
-				}
+	// Apply redaction based on level
+	switch level {
+	case NormalRedaction:
+		// Only redact always redacted fields
+		redactFields(alertValue, alwaysRedactedFields)
+
+	case PartialRedaction:
+		// Redact always redacted fields
+		redactFields(alertValue, alwaysRedactedFields)
+		// Redact additional location fields
+		redactFields(alertValue, partialRedactedFields)
+
+	case FullRedaction:
+		// Redact everything except preserved fields
+		// Get all field names using reflection
+		alertType := alertValue.Type()
+		fieldCount := alertType.NumField()
+
+		for i := 0; i < fieldCount; i++ {
+			fieldName := alertType.Field(i).Name
+
+			// Skip preserved fields
+			if contains(preservedFieldsInFullRedaction, fieldName) {
+				continue
+			}
+
+			fieldValue := alertValue.FieldByName(fieldName)
+			if fieldValue.IsValid() && fieldValue.CanSet() {
+				redactField(fieldValue)
 			}
 		}
-	}
 
-	// If no further redaction needed based on description, return the alert with just always-redacted fields
-	if !needsRedaction {
-		return &redactedAlert
-	}
-
-	// If we reach here, full redaction is needed
-	if !keepCoordinates {
+		// Always redact coordinates in full redaction mode
 		redactedAlert.Alert.Lat = 0
 		redactedAlert.Alert.Lon = 0
 	}
 
-	// Loop through fields that need redaction based on description
-	for _, field := range redactedFields {
+	return &redactedAlert
+}
+
+// redactFields applies redaction to the specified fields
+func redactFields(alertValue reflect.Value, fields []string) {
+	for _, field := range fields {
 		fieldValue := alertValue.FieldByName(field)
 		if fieldValue.IsValid() && fieldValue.CanSet() {
-			// Handle different types of fields
-			switch fieldValue.Kind() {
-			case reflect.String:
-				fieldValue.SetString("[Redacted]")
-			case reflect.Ptr:
-				// Handle string pointers
-				if !fieldValue.IsNil() && fieldValue.Elem().Kind() == reflect.String {
-					fieldValue.Elem().SetString("[Redacted]")
-				}
-			}
+			redactField(fieldValue)
 		}
 	}
+}
 
-	return &redactedAlert
+// redactField redacts a single field based on its type
+func redactField(fieldValue reflect.Value) {
+	switch fieldValue.Kind() {
+	case reflect.String:
+		fieldValue.SetString("[Redacted]")
+	case reflect.Ptr:
+		// Handle string pointers
+		if !fieldValue.IsNil() && fieldValue.Elem().Kind() == reflect.String {
+			fieldValue.Elem().SetString("[Redacted]")
+		}
+	case reflect.Float64:
+		fieldValue.SetFloat(0)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		fieldValue.SetInt(0)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		fieldValue.SetUint(0)
+	case reflect.Bool:
+		fieldValue.SetBool(false)
+	case reflect.Slice:
+		// Clear slices
+		fieldValue.Set(reflect.Zero(fieldValue.Type()))
+	}
+}
+
+// contains checks if a string is in a slice
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }
 
 // Auth middleware adds authentication info to the request context

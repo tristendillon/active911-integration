@@ -94,7 +94,7 @@ func (h *Handler) GetAlerts(w http.ResponseWriter, r *http.Request) {
 	redactedAlerts := make([]models.Alert, len(alerts))
 	if !authInfo.Authenticated {
 		for i := range alerts {
-			redactedAlert := auth.RedactAlertData(&alerts[i], false)
+			redactedAlert := auth.RedactAlertData(&alerts[i])
 			redactedAlerts[i] = *redactedAlert
 		}
 		h.logger.Info("Returning redacted alerts (unauthenticated access)")
@@ -138,6 +138,7 @@ func (h *Handler) GetAlerts(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CreateAlert(w http.ResponseWriter, r *http.Request) {
 	// Get authentication info from context
 	authInfo, _ := auth.GetAuthInfoFromContext(r.Context())
+	h.logger.Infof("Authentication info: %+v", authInfo)
 	if !authInfo.Authenticated {
 		h.respondWithError(w, http.StatusUnauthorized, "Unauthorized: Invalid API password")
 		h.logger.Warn("Unauthorized attempt to create alert")
@@ -318,7 +319,7 @@ func (h *Handler) GetAlert(w http.ResponseWriter, r *http.Request) {
 
 	// Redact sensitive information if not authenticated
 	if !authInfo.Authenticated {
-		redacted := auth.RedactAlertData(&alert, false)
+		redacted := auth.RedactAlertData(&alert)
 		responseAlert = redacted
 		h.logger.Infof("Returning redacted alert %s (unauthenticated access)", id)
 	} else {
