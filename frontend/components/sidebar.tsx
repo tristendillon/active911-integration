@@ -26,11 +26,6 @@ export default function Sidebar({ isFireTV = false }: SidebarProps) {
   // Mobile layout
   return (
     <>
-      {/* Weather alerts carousel - visible on mobile at top */}
-      <div className={`block md:hidden ${weatherAlertHeight} border-b border-border overflow-hidden`}>
-        <WeatherAlerts isFireTV={isFireTV} />
-      </div>
-
       {/* Alerts - full width on mobile, 3/5 on desktop */}
       <motion.div
         layout
@@ -45,10 +40,10 @@ export default function Sidebar({ isFireTV = false }: SidebarProps) {
       </motion.div>
 
       {/* Weather alerts detail - hidden on mobile, visible on desktop */}
-      <div className="hidden md:flex md:col-span-2 md:row-span-2 border-r border-b border-border h-full md:max-h-none overflow-hidden">
+      <div className="flex md:col-span-2 md:row-span-2 border-r border-b border-border h-full md:max-h-none overflow-hidden">
         <WeatherAlerts isFireTV={false} />
       </div>
-      <div className="hidden md:flex md:col-span-2 md:row-span-1 border-r border-b border-border max-h-[20vh] md:max-h-none overflow-auto">
+      <div className="flex md:col-span-2 md:row-span-1 border-r border-b border-border max-h-[20vh] md:max-h-none overflow-auto">
         {!loading && weather?.alerts && weather.alerts.length > 0 && (
           <div className={`flex flex-col w-full ${gap} ${padding}`}>
             {weather.alerts.map((weatherAlert) => (
