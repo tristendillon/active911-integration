@@ -16,11 +16,11 @@ export default async function AllDashboardPage({ params, searchParams }: AllDash
 
   return (
     <MapProvider>
-      <WeatherProvider>
-        <DashboardProvider sound={sound} password={pagePassword}>
+      <DashboardProvider sound={sound} password={pagePassword}>
+        <WeatherProvider>
           <Dashboard />
-        </DashboardProvider>
-      </WeatherProvider>
+        </WeatherProvider>
+      </DashboardProvider>
     </MapProvider>
   );
 }

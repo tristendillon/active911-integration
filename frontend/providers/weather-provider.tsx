@@ -2,6 +2,7 @@
 
 import { Weather } from '@/lib/types';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useDashboard } from './dashboard-provider';
 
 
 interface WeatherProviderProps {
@@ -20,6 +21,7 @@ export function WeatherProvider({ children }: WeatherProviderProps) {
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const { emitListener } = useDashboard()
 
   const fetchWeather = async () => {
     try {
@@ -38,54 +40,6 @@ export function WeatherProvider({ children }: WeatherProviderProps) {
       setLoading(false);
     }
   };
-
-  // Set up WebSocket connection for real-time weather updates
-  useEffect(() => {
-    // Connect to the WebSocket for dashboard which includes weather updates
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/dashboard`;
-
-    const connectWebSocket = () => {
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('WebSocket connected for weather updates');
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-
-          // Handle weather update messages
-          if (message.type === 'weather_update' && message.content) {
-            setWeather(message.content);
-            setLoading(false);
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-
-      ws.onclose = () => {
-        console.log('WebSocket disconnected, trying to reconnect...');
-        setTimeout(connectWebSocket, 3000); // Try to reconnect after 3 seconds
-      };
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        ws.close();
-      };
-    };
-
-    connectWebSocket();
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, []);
 
   // Fetch initial weather data
   useEffect(() => {
@@ -110,6 +64,14 @@ export function WeatherProvider({ children }: WeatherProviderProps) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    emitListener("new_weather", (data) => {
+      console.log(data)
+    })
+
+  }, [emitListener])
+
 
   return (
     <WeatherContext.Provider
