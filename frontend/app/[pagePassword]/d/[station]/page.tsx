@@ -25,17 +25,17 @@ export default async function StationDashboardPage({ params, searchParams }: Sta
 
   return (
     <MapProvider>
-      <WeatherProvider>
-        <DashboardProvider
-          password={pagePassword === 'public' ? undefined : pagePassword}
-          station={station}
-          center={center}
-          markers={[center]}
-          sound={sound}
-        >
+      <DashboardProvider
+        password={pagePassword === 'public' ? undefined : pagePassword}
+        station={station}
+        center={center}
+        markers={[center]}
+        sound={sound}
+      >
+        <WeatherProvider>
           <Dashboard />
-        </DashboardProvider>
-      </WeatherProvider>
+        </WeatherProvider>
+      </DashboardProvider>
     </MapProvider>
   );
 }

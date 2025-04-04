@@ -5,15 +5,13 @@ import NewAlertPopover from './alert-popover/new-alert-popover';
 import { GoogleMapComponent } from './google-map-component';
 import { useDashboard } from '@/providers/dashboard-provider';
 import Sidebar from './sidebar';
+import useAmazonDevice from '@/hooks/use-amazon-device';
 
 
 export default function Dashboard() {
   const { sound, map } = useDashboard();
+  const { isFireTV, isSilk } = useAmazonDevice()
   useEffect(() => {
-    const userAgent = navigator.userAgent.toLowerCase();
-    const isFireTV = userAgent.includes("aft");
-    const isSilk = userAgent.includes("silk");
-
     if (isFireTV || isSilk || true) {
       let viewport = document.querySelector('meta[name="viewport"]');
       if (!viewport) {
@@ -27,8 +25,9 @@ export default function Dashboard() {
   }, []);
 
   // Original layout for other devices
+  
   return (
-    <>
+    <div>
       <NewAlertPopover sound={sound} />
       <div className="block lg:hidden">
         <Header />
@@ -44,6 +43,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
