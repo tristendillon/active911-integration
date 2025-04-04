@@ -11,18 +11,9 @@ import useAmazonDevice from '@/hooks/use-amazon-device';
 export default function Dashboard() {
   const { sound, map } = useDashboard();
   const { isFireTV, isSilk } = useAmazonDevice();
-  const [isAmazonDevice, setIsAmazonDevice] = React.useState(false);
   useEffect(() => {
-    // Check if this component is running inside an iframe
-    const isInsideIframe = window.self !== window.top;
-    
-    // Check URL parameters for amazon=true
-    const urlParams = new URLSearchParams(window.location.search);
-    const amazonParam = urlParams.get('amazon');
-    setIsAmazonDevice(amazonParam === 'true' || isFireTV || isSilk);
-    
     // Apply scaling if Amazon device detected (either by URL param or user agent)
-    if ((isFireTV || isSilk || amazonParam === 'true')) {
+    if (isFireTV || isSilk) {
       let viewport = document.querySelector('meta[name="viewport"]');
       if (!viewport) {
         viewport = document.createElement('meta');
@@ -38,10 +29,12 @@ export default function Dashboard() {
 
   return (
     <>
+      <div>IS firetv {isFireTV}</div>
+      <div>Is silk {isSilk}</div>
       <NewAlertPopover sound={sound} />
       <div className="h-full w-full flex">
         <div className="hidden md:grid md:w-1/2 bg-secondary md:grid-cols-5 h-screen overflow-hidden">
-          <Sidebar isFireTV={isAmazonDevice} />
+          <Sidebar isFireTV={isFireTV} />
         </div>
         <div className="w-full h-full block">
           <Header />
