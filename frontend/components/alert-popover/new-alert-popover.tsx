@@ -1,6 +1,5 @@
 import type { Alert } from '@/lib/types';
 import { useDashboard } from '@/providers/dashboard-provider';
-import { alertEmitter } from '@/hooks/use-alerts';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import NewAlertHeader from './new-alert-header';
@@ -22,7 +21,7 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { playSound, stopSound } = useAlertAudio(sound);
 
-  const { setIsNewAlert, map, units } = useDashboard();
+  const { setIsNewAlert, map, units, emitListener } = useDashboard();
 
   /** Dismiss the alert */
   const dismissAlert = useCallback(() => {
@@ -40,7 +39,6 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
   /** Handle new alert event */
   useEffect(() => {
     function handleNewAlert(newAlert: Alert) {
-      console.log('Received new_alert event:', newAlert.alert.description);
       setCurrentAlert(newAlert);
       setIsAnimating(true);
 
@@ -53,13 +51,9 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
       }, ANIMATION_DELAY);
     }
 
-    // Log that we're setting up the listener
-    console.log('Setting up new_alert event listener');
-    alertEmitter.on('new_alert', handleNewAlert);
+    emitListener('new_alert', handleNewAlert);
 
     return () => {
-      console.log('Cleaning up new_alert event listener');
-      alertEmitter.off('new_alert', handleNewAlert);
       clearTimeout(animationTimeoutRef.current!);
       stopSound();
     };
