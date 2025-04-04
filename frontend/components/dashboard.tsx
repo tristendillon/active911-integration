@@ -10,10 +10,10 @@ import useAmazonDevice from '@/hooks/use-amazon-device';
 
 export default function Dashboard() {
   const { sound, map } = useDashboard();
-  const { isFireTV, isSilk } = useAmazonDevice();
+  const { isFireTV, isSilk, userAgent } = useAmazonDevice();
   useEffect(() => {
     // Apply scaling if Amazon device detected (either by URL param or user agent)
-    if (isFireTV || isSilk) {
+    if (isFireTV || isSilk || true) {
       let viewport = document.querySelector('meta[name="viewport"]');
       if (!viewport) {
         viewport = document.createElement('meta');
@@ -31,6 +31,7 @@ export default function Dashboard() {
     <>
       <div>IS firetv {isFireTV}</div>
       <div>Is silk {isSilk}</div>
+      <div>ua {userAgent}</div>
       <NewAlertPopover sound={sound} />
       <div className="h-full w-full flex">
         <div className="hidden md:grid md:w-1/2 bg-secondary md:grid-cols-5 h-screen overflow-hidden">

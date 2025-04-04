@@ -16,16 +16,12 @@ export default function Sidebar({ isFireTV = false }: SidebarProps) {
   const { alerts, units } = useDashboard();
   const { weather, loading } = useWeather();
 
-  // Adjust padding and spacing for Fire TV
   const padding = isFireTV ? "p-3" : "p-2";
   const gap = isFireTV ? "gap-3" : "gap-2";
   const alertsHeight = isFireTV ? "h-[75vh]" : "h-[70vh]";
 
-
-  // Mobile layout
   return (
     <>
-      {/* Alerts - full width on mobile, 3/5 on desktop */}
       <motion.div
         layout
         className={`${padding} flex flex-col ${alertsHeight} md:h-full ${gap} border-r border-border overflow-auto md:col-span-3 md:row-span-3`}
@@ -38,7 +34,6 @@ export default function Sidebar({ isFireTV = false }: SidebarProps) {
           ))}
       </motion.div>
 
-      {/* Weather alerts detail - hidden on mobile, visible on desktop */}
       <div className="flex md:col-span-2 md:row-span-2 border-r border-b border-border h-full md:max-h-none overflow-hidden">
         <WeatherAlerts isFireTV={false} />
       </div>
