@@ -14,7 +14,7 @@ export default function Dashboard() {
     const isFireTV = userAgent.includes("aft");
     const isSilk = userAgent.includes("silk");
 
-    if (isFireTV || isSilk) {
+    if (isFireTV || isSilk || true) {
       let viewport = document.querySelector('meta[name="viewport"]');
       if (!viewport) {
         viewport = document.createElement('meta');
