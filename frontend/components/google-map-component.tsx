@@ -98,7 +98,8 @@ export function GoogleMapComponent({ center = defaultMapCenter, zoom = 20, class
           draggable: false,
           zoomControl: false,
           scrollwheel: false,
-          disableDefaultUI: true
+          disableDefaultUI: true,
+          mapTypeId: google.maps.MapTypeId.HYBRID
         }}
       >
         <TrafficLayer options={{
