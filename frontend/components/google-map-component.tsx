@@ -21,9 +21,10 @@ interface GoogleMapComponentProps {
   className?: string;
   markers?: google.maps.LatLngLiteral[];
   showDirections?: boolean;
+  children?: React.ReactNode;
 }
 
-export function GoogleMapComponent({ center = defaultMapCenter, zoom = 20, className, markers, showDirections = false }: GoogleMapComponentProps) {
+export function GoogleMapComponent({ center = defaultMapCenter, zoom = 20, className, markers, showDirections = false, children }: GoogleMapComponentProps) {
   const { map, setMap } = useMap();
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
 
@@ -103,6 +104,7 @@ export function GoogleMapComponent({ center = defaultMapCenter, zoom = 20, class
         <TrafficLayer options={{
           autoRefresh: true,
         }} />
+        {children}
         {/* Only show markers if we're not showing directions */}
         {markers?.map((marker) => <MarkerF key={`${marker.lat}-${marker.lng}`} position={marker} />)}
 

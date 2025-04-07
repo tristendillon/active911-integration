@@ -149,9 +149,18 @@ func main() {
 		dashboardHub.BroadcastEvent(eventType, data)
 	})
 
+	// Initialize the hydrant handler
+	if err := store.InitHydrantTable(); err != nil {
+		notifyService.NotifyFatal(err, "Failed to initialize hydrant table")
+		logger.Fatal(err, "Failed to initialize hydrant table")
+	}
+	
+	hydrantHandler := api.NewHydrantHandler(store, logger, dashboardHub)
+
 	// Register routes
 	apiHandler.RegisterRoutes(r)
 	weatherHandler.RegisterRoutes(r)
+	hydrantHandler.RegisterRoutes(r)
 
 	// Register WebSocket handlers
 	wsHandler := websocket.NewHandler(dashboardHub, clientHub, logsHub, authenticator, logger)

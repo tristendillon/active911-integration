@@ -4,8 +4,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { CommandShortcut } from './ui/command';
-import { alertEmitter } from '@/hooks/use-alerts';
 import { cn } from '@/lib/utils';
+import { dashboardEmitter } from '@/hooks/use-dashboard-socket';
 
 interface AlertItemProps {
   units?: string[];
@@ -33,8 +33,7 @@ export default function AlertItem({ units, alert, noEmit, isFireTV = false, show
 
   const handleClick = () => {
     if (!noEmit) {
-      console.log('Emitting new_alert event for:', alert.alert.description);
-      alertEmitter.emit('new_alert', alert);
+      dashboardEmitter.emit('new_alert', alert);
     }
   };
   return (

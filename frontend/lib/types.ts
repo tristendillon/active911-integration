@@ -85,3 +85,30 @@ export interface Weather {
   days: WeatherDay[];
   alerts: WeatherAlert[];
 }
+
+export interface Hydrant {
+  id?: string;
+  type?: string;
+  nozzles?: number;
+  flow_rate?: number;
+  color?: string;
+  status?: string;
+  lat: number;
+  lng: number;
+  flow_status?: string;
+  created_at?: number;
+  updated_at?: number;
+}
+
+export interface HydrantBatchUploadProgress {
+  total: number;
+  processed: number;
+  successful: number;
+  failed: number;
+  progress: number; // Percentage 0-100
+  in_progress: boolean;
+  failedItems?: {
+    index: number;
+    error: string;
+  }[];
+}
