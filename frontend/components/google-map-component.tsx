@@ -36,6 +36,19 @@ export function GoogleMapComponent({ className, children, id }: GoogleMapCompone
     [setMap, id]
   );
 
+  const mapStyles = [
+    {
+      featureType: "poi",
+      elementType: "labels",
+      stylers: [{ visibility: "off" }]
+    },
+    {
+      featureType: "transit",
+      elementType: "labels",
+      stylers: [{ visibility: "off" }]
+    }
+  ];
+
   return (
     <div className={cn(`w-full h-full`, className)}>
       <GoogleMap
@@ -45,6 +58,7 @@ export function GoogleMapComponent({ className, children, id }: GoogleMapCompone
         center={defaultMapCenter}
         zoom={DEFAULT_ZOOM}
         options={{
+          styles: mapStyles,
           streetViewControl: false,
           fullscreenControl: false,
           mapTypeControl: false,
@@ -53,9 +67,9 @@ export function GoogleMapComponent({ className, children, id }: GoogleMapCompone
           scrollwheel: false,
           disableDefaultUI: true,
           mapTypeId: google.maps.MapTypeId.HYBRID,
-          minZoom: 9, // Prevent excessive zooming out
-          maxZoom: 20, // Prevent excessive zooming in
-          tilt: 0,
+          minZoom: 9,
+          maxZoom: 20,
+          tilt: 0
         }}
       >
         <TrafficLayer

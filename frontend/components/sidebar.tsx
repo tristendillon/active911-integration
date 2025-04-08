@@ -13,7 +13,6 @@ interface SidebarProps {
 
 export default function Sidebar({ isFireTV = false }: SidebarProps) {
   const limit = 10
-
   const { alerts, units, pagination } = useDashboard();
   const {weather, loading} = useWeather()
   const padding = isFireTV ? "p-3" : "p-2";
