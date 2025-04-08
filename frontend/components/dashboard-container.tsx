@@ -32,14 +32,7 @@ export default function DashboardContainer({ password, station, sound }: Dashboa
       emitListener('refresh', () => {
         console.log('Refresh event received, reloading iframe content');
         if (iframeRef.current) {
-          // Reload the iframe content
-          const currentSrc = iframeRef.current.src;
-          iframeRef.current.src = 'about:blank';
-          setTimeout(() => {
-            if (iframeRef.current) {
-              iframeRef.current.src = currentSrc;
-            }
-          }, 100);
+          iframeRef.current.contentDocument?.location.reload()
         }
       });
     emitListener('redirect', (data: { url: string }) => {
