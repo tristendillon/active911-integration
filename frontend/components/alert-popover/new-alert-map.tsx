@@ -42,7 +42,7 @@ export default function NewAlertMap({ alert, isFireTV = false }: NewAlertMapProp
     if (!map || !coords.lat || !coords.lng) return;
 
     // Set a reasonable close-up zoom level for alert details
-    const ALERT_DETAIL_ZOOM = 19;
+    const ALERT_DETAIL_ZOOM = 18;
 
     // Center the map on the alert
     map.setCenter(coords);

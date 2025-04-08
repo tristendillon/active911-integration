@@ -1,4 +1,6 @@
-# CLAUDE.md - Project-wide settings for Claude Code
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Build/Run Commands
 - Dev (all services): `pnpm dev` or `turbo dev`
@@ -6,27 +8,28 @@
 - Dev Go API only: `pnpm dev:api`
 - Dev Frontend only: `pnpm dev:frontend`
 - Build: `pnpm build`
-- Lint: `pnpm lint`
+- Lint: `pnpm lint` (frontend: `cd frontend && npm run lint`, server: `cd server && npm run lint` or `cd server && golangci-lint run ./...`)
+- Format: `cd frontend && npm run format`
+- Go tests: `cd server && go test ./internal/...` (for a specific test: `cd server && go test ./internal/path/to/package -run TestName`)
 
-## Server-specific Commands
-- Go build: `cd server && go build -o ./bin/server .`
-- Go test: `cd server && go test ./...`
-- Go lint: `cd server && npm run lint` or `cd server && golangci-lint run ./...`
+## Code Style Guidelines
+- **TypeScript/React**:
+  - Use TypeScript strict mode
+  - Import order: React, libraries, local modules
+  - Use React functional components and hooks
+  - Follow Next.js App Router conventions
+  - Use Tailwind for styling through `cn()` utility
+  - Prefer named exports
+  - Use async/await for asynchronous code
 
-## Frontend-specific Commands
-- Next.js build: `cd frontend && npm run build`
-- Next.js lint: `cd frontend && npm run lint`
-
-## Dev Container
-- Open in container: Use VS Code's "Reopen in Container" command
-- Dev container includes:
-  - Node.js 20
-  - Go 1.22
-  - Docker-in-Docker
-  - PostgreSQL 16
-  - Required VS Code extensions
+- **Go**:
+  - Follow standard Go conventions (gofmt)
+  - Error handling: check errors and log appropriately
+  - Use context for timeouts and cancellation
+  - Struct initialization: use field names
+  - Use pointers for nullable fields
+  - Log errors using the logger service
 
 ## Project Structure
 - `/frontend` - Next.js frontend application
 - `/server` - Go API server with PostgreSQL database
-- `/.devcontainer` - Dev container configuration

@@ -55,6 +55,7 @@ export function GoogleMapComponent({ className, children, id }: GoogleMapCompone
           mapTypeId: google.maps.MapTypeId.HYBRID,
           minZoom: 9, // Prevent excessive zooming out
           maxZoom: 20, // Prevent excessive zooming in
+          tilt: 0,
         }}
       >
         <TrafficLayer

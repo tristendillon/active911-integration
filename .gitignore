@@ -95,6 +95,8 @@ next-env.d.ts
 *.bin
 *.out
 
-test-alerts.sh
+*.sh
 
+**
 **/.air.toml
+CLAUDE.md
