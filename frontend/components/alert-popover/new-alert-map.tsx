@@ -1,13 +1,14 @@
 'use client';
 
 import type { Alert } from '@/lib/types';
-import React, { useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { GoogleMapComponent } from '../google-map-component';
 import { WeatherAlertBanner } from '../weather/weather-alert-banner';
 import { useWeather } from '@/providers/weather-provider';
 import { useMap } from '@/providers/map-provider';
 import { Hydrant } from '@/lib/types';
 import { Marker } from '@react-google-maps/api';
+import { getAlertIcon } from '@/lib/utils';
 
 interface NewAlertMapProps {
   alert: Alert;
@@ -16,30 +17,47 @@ interface NewAlertMapProps {
 }
 
 export default function NewAlertMap({ alert, isFireTV = false }: NewAlertMapProps) {
-  const { map } = useMap();
+  const { map } = useMap('popover');
   const [hydrants, setHydrants] = useState<Hydrant[]>([]);
   const { weather, loading } = useWeather();
-  const coords = {
-    lat: alert.alert.lat,
-    lng: alert.alert.lon,
-  };
+  const coords = useMemo(
+    () => ({
+      lat: alert.alert.lat,
+      lng: alert.alert.lon,
+    }),
+    [alert.alert.lat, alert.alert.lon]
+  );
 
   const getHydrantsInBounds = async (bounds: google.maps.LatLngBounds) => {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hydrants?south_lat=${bounds.getSouthWest().lat()}&west_lng=${bounds.getSouthWest().lng()}&north_lat=${bounds.getNorthEast().lat()}&east_lng=${bounds.getNorthEast().lng()}`);
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/hydrants?south_lat=${bounds.getSouthWest().lat()}&west_lng=${bounds.getSouthWest().lng()}&north_lat=${bounds.getNorthEast().lat()}&east_lng=${bounds.getNorthEast().lng()}`
+    );
     const data = await res.json();
     if (res.ok) {
       setHydrants(data.data);
     }
   };
 
-  React.useEffect(() => {
-    if (map) {
+  useEffect(() => {
+    if (!map || !coords.lat || !coords.lng) return;
+
+    // Set a reasonable close-up zoom level for alert details
+    const ALERT_DETAIL_ZOOM = 19;
+
+    // Center the map on the alert
+    map.setCenter(coords);
+
+    // Set zoom level after centering
+    map.setZoom(ALERT_DETAIL_ZOOM);
+
+    // Fetch hydrants after map is properly positioned
+    setTimeout(() => {
       const bounds = map.getBounds();
       if (bounds) {
         getHydrantsInBounds(bounds);
       }
-    }
-  }, [map]);
+    }, 100); // Give the map time to update bounds after zoom/center changes
+  }, [map, coords]);
 
   const getColor = (flow_rate: number) => {
     if (flow_rate < 500) {
@@ -60,16 +78,23 @@ export default function NewAlertMap({ alert, isFireTV = false }: NewAlertMapProp
           <div className="text-2xl font-bold">No coordinates found</div>
         </div>
       ) : (
-        <GoogleMapComponent center={coords} zoom={19} className="h-full" markers={[coords]} showDirections>
-         {hydrants?.map((hydrant) => (
+        <GoogleMapComponent className="h-full" id="popover">
           <Marker
-            key={hydrant.id}
-            position={{ lat: hydrant.lat, lng: hydrant.lng }}
+            position={coords}
             icon={{
-              url: `/icons/hydrant-${getColor(hydrant.flow_rate ?? 0)}.png`,
-              scaledSize: new google.maps.Size(40, 40)
+              url: getAlertIcon(alert.alert.description!),
+              scaledSize: new google.maps.Size(40, 40),
             }}
           />
+          {hydrants?.map((hydrant) => (
+            <Marker
+              key={hydrant.id}
+              position={{ lat: hydrant.lat, lng: hydrant.lng }}
+              icon={{
+                url: `/icons/hydrant-${getColor(hydrant.flow_rate ?? 0)}.png`,
+                scaledSize: new google.maps.Size(40, 40),
+              }}
+            />
           ))}
         </GoogleMapComponent>
       )}

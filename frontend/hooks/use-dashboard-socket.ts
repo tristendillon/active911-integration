@@ -84,17 +84,12 @@ export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketO
         queryParams.set('password', password);
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?${queryParams.toString()}`, {
-        headers: {
-          'ngrok-skip-browser-warning': 'true',
-        },
-      });
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?${queryParams.toString()}`);
 
       if (!isMountedRef.current) return;
 
       const data = await response.json();
 
-      console.log('Fetched alerts:', data);
       const fetchedAlerts = data.data;
       if (fetchedAlerts === null) {
         setAlerts([]);
@@ -225,7 +220,7 @@ export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketO
             if (eventData.type === 'new_alert') {
               const newAlert: Alert = eventData.content;
               if (isMountedRef.current) {
-                setAlerts((prevAlerts) => [newAlert, ...prevAlerts]);
+                setAlerts((prevAlerts) => [newAlert, ...prevAlerts.slice(0, 10)]);
                 dashboardEmitter.emit(eventData.type, newAlert);
               }
             } else if (eventData.type === 'heartbeat') {

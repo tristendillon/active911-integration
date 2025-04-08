@@ -19,7 +19,6 @@ interface DashboardContextType {
   map: {
     center: google.maps.LatLngLiteral;
     zoom: number;
-    markers: google.maps.LatLngLiteral[];
   };
   sound: boolean;
   connections: {
@@ -85,7 +84,6 @@ export function DashboardProvider({
         map: {
           center,
           zoom,
-          markers: markers.length > 0 ? markers : [center],
         },
         alerts: {
           loading,
