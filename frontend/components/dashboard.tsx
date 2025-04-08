@@ -100,17 +100,20 @@ export default function Dashboard() {
               <div className={cn('w-full relative h-[calc(100%-150px)]', isFireTV || (isSilk && 'h-[calc(166%-150px)]'))}>
                 <GoogleMapComponent id="dashboard">
                   {alerts.data.map((alert) => (
-                    <Marker
-                      key={alert.alert.id}
-                      position={{ lat: alert.alert.lat, lng: alert.alert.lon }}
-                      icon={{
-                        url: getAlertIcon(alert.alert.description!),
-                        scaledSize: new google.maps.Size(30, 30),
-                      }}
-                      onClick={() => {
-                        dashboardEmitter.emit('new_alert', alert);
-                      }}
-                    />
+                    <React.Fragment key={alert.alert.id}>
+                      {alert.alert.lat && alert.alert.lon &&
+                        <Marker
+                          position={{ lat: alert.alert.lat, lng: alert.alert.lon }}
+                          icon={{
+                            url: getAlertIcon(alert.alert.description!),
+                            scaledSize: new google.maps.Size(30, 30),
+                          }}
+                          onClick={() => {
+                            dashboardEmitter.emit('new_alert', alert);
+                          }}
+                        />
+                      }
+                    </React.Fragment>
                   ))}
                 </GoogleMapComponent>
                 {!loading && weather?.alerts && weather.alerts.length > 0 && (
