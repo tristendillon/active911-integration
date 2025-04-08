@@ -1276,6 +1276,10 @@ func determineRedactionLevel(descriptor string) RedactionLevel {
 		}
 	}
 
+	if level != NormalRedaction {
+		return level
+	}
+
 	// Second pass for contain strings which is secondary check.
 	for _, dr := range secondaryRedaction {
 		if strings.Contains(clean, dr.Key) {

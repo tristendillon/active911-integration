@@ -30,7 +30,6 @@ export default function DashboardContainer({ password, station, sound }: Dashboa
       return
     }
       emitListener('refresh', () => {
-        console.log('Refresh event received, reloading iframe content');
         if (iframeRef.current) {
           iframeRef.current.contentDocument?.location.reload()
         }
