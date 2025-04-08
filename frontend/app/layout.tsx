@@ -39,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full w-full !scroll-smooth dark" suppressHydrationWarning>
+    <html lang="en" className="h-screen w-full !scroll-smooth dark" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-full w-full overflow-hidden`}>
         <PostHogProvider>
           {children}

@@ -19,8 +19,8 @@ export default function DashboardContainer({ password, station, sound }: Dashboa
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { isFireTV, isSilk } = useAmazonDevice();
   const deviceParam = (isFireTV || isSilk) ? '&amazon=true' : '';
-  const url = station 
-    ? `${process.env.NEXT_PUBLIC_URL}/${password}/d/${station.id}?sound=${sound ? 'on' : 'off'}${deviceParam}` 
+  const url = station
+    ? `${process.env.NEXT_PUBLIC_URL}/${password}/d/${station.id}?sound=${sound ? 'on' : 'off'}${deviceParam}`
     : `${process.env.NEXT_PUBLIC_URL}/${password}/d?sound=${sound ? 'on' : 'off'}${deviceParam}`;
   const [iframeSrc, setIframeSrc] = useState(url);
   const { emitListener } = useClientListener({ password });
@@ -62,6 +62,8 @@ export default function DashboardContainer({ password, station, sound }: Dashboa
         src={iframeSrc}
         className="w-full h-full border-0"
         title="Dashboard Content"
+        width={"100%"}
+        height={"100%"}
       />
     </div>
   );
