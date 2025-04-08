@@ -105,7 +105,7 @@ export default function Dashboard() {
                       position={{ lat: alert.alert.lat, lng: alert.alert.lon }}
                       icon={{
                         url: getAlertIcon(alert.alert.description!),
-                        scaledSize: new google.maps.Size(40, 40),
+                        scaledSize: new google.maps.Size(30, 30),
                       }}
                       onClick={() => {
                         dashboardEmitter.emit('new_alert', alert);

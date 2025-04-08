@@ -24,6 +24,13 @@ interface DashboardContextType {
   connections: {
     dashboard: boolean;
   };
+  pagination: {
+    page: number;
+    nextPage: () => void;
+    prevPage: () => void;
+    hasNextPage: boolean;
+    total: number;
+  }
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -57,7 +64,8 @@ export function DashboardProvider({
     setAlerts,
     loading,
     emitListener,
-    isConnected: dashboardConnected
+    isConnected: dashboardConnected,
+    pagination
   } = useDashboardSocket({
     password,
   });
@@ -95,7 +103,8 @@ export function DashboardProvider({
         units: units || [],
         connections: {
           dashboard: dashboardConnected
-        }
+        },
+        pagination
       }}
     >
       {children}
