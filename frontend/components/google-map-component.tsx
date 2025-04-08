@@ -43,10 +43,6 @@ export function GoogleMapComponent({ className, children, id }: GoogleMapCompone
       stylers: [{ visibility: "off" }]
     },
     {
-      featureType: "business",
-      stylers: [{ visibility: "off" }]
-    },
-    {
       featureType: "transit",
       elementType: "labels",
       stylers: [{ visibility: "off" }]
