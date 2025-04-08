@@ -74,7 +74,7 @@ function ClockDisplay({ currentTime, isFireTV = false }: ClockDisplayProps) {
   return (
     <div className={containerClasses}>
       <span className={dateClasses}>{format(currentTime, 'EEE, MMM d')}</span>
-      <span className={timeClasses}>{format(currentTime, 'h:mm:ss a')}</span>
+      <span className={timeClasses}>{format(currentTime, 'HH:mm:ss')}</span>
     </div>
   );
 }
