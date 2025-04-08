@@ -95,8 +95,4 @@ next-env.d.ts
 *.bin
 *.out
 
-delete-alerts.sh
-delete-hydrants.sh
-
 **/.air.toml
-CLAUDE.md
