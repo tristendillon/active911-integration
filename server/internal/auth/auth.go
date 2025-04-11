@@ -53,11 +53,7 @@ func (a *Authenticator) Authenticate(password string) (bool, error) {
 		return true, nil
 	}
 
-	a.logger.Infof("Authenticating request - API password configured: %v, password provided: %v",
-		a.apiPassword != "", password != "")
-
 	if password != a.apiPassword {
-		a.logger.Info("Authentication failed - incorrect password provided")
 		return false, ErrUnauthorized
 	}
 
@@ -69,27 +65,21 @@ func (a *Authenticator) Authenticate(password string) (bool, error) {
 func (a *Authenticator) GetAuthInfo(r *http.Request) AuthInfo {
 	// Check query parameter first
 	password := r.URL.Query().Get("password")
-	a.logger.Infof("Auth check - Query param password present: %v", password != "")
 
 	// If empty, check Authorization header
 	if password == "" {
 		authHeader := r.Header.Get("Authorization")
-		a.logger.Infof("Auth check - Authorization header present: %v", authHeader != "")
 		if strings.HasPrefix(authHeader, "Bearer ") {
 			password = strings.TrimPrefix(authHeader, "Bearer ")
-			a.logger.Infof("Auth check - Bearer token extracted")
 		}
 	}
 
 	// Check if password is valid
 	isAuthenticated, err := a.Authenticate(password)
 	if err != nil {
-		a.logger.Error(err, "Error authenticating request")
+		a.logger.Debugf("Error authenticating request: %v", err)
 		isAuthenticated = false
 	}
-
-	a.logger.Infof("Auth check complete - Password provided: %v, Authenticated: %v",
-		password != "", isAuthenticated)
 
 	return AuthInfo{
 		Authenticated: isAuthenticated,

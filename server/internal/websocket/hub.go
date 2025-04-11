@@ -89,109 +89,6 @@ func (h *Hub) Run() {
 	}
 }
 
-// BroadcastEventToStation creates and sends a structured event message to clients filtered by station
-func (h *Hub) BroadcastEventToStation(eventType string, content any, station string) {
-	if h.hubType != HubTypeDashboard {
-		h.logger.Warnf("Attempted to broadcast station-specific event on non-dashboard hub")
-		return
-	}
-
-	h.logger.Infof("Broadcasting %s event to clients for station %s", eventType, station)
-
-	// Check if the content needs redaction based on event type
-	if content != nil && (eventType == "new_alert") {
-		// Handle both pointer and value types
-		var alert *models.Alert
-
-		// Check if content is a pointer to Alert
-		alertPtr, ok := content.(*models.Alert)
-		if ok {
-			alert = alertPtr
-		} else {
-			// Check if content is an Alert value
-			alertVal, ok := content.(models.Alert)
-			if ok {
-				alert = &alertVal
-			} else {
-				h.logger.Infof("Content is not an alert")
-				return
-			}
-		}
-
-		// Handle each client individually
-		for c := range h.clients {
-			// Filter by station if specified
-			clientStation := c.GetMetadata("station")
-			if station != "" && clientStation != "" && clientStation != station {
-				// Skip clients not subscribed to this station
-				continue
-			}
-
-			var clientContent *models.Alert
-
-			if !c.isAuthenticated {
-				// Create a deep copy for redaction
-				alertCopy := models.DeepCopyAlert(*alert)
-				clientContent = auth.RedactAlertData(&alertCopy)
-			} else {
-				clientContent = alert
-			}
-
-			// Create individual message for this client
-			msg := models.WebSocketMessage{
-				Type:    eventType,
-				Content: clientContent,
-				ID:      uuid.New().String(),
-				Time:    time.Now(),
-			}
-
-			// Log the message if there's a callback
-			if h.logMessageCallback != nil && eventType != "new_log" {
-				h.logMessageCallback(msg, "server-direct", c.id)
-			}
-
-			// Send directly to this client
-			c.send <- msg
-		}
-	} else {
-		// For other events that don't need redaction, we can still use broadcast
-		msgContent := content
-
-		// Create the message
-		msg := models.WebSocketMessage{
-			Type:    eventType,
-			Content: msgContent,
-			ID:      uuid.New().String(),
-			Time:    time.Now(),
-		}
-
-		// Log the message if there's a callback
-		if h.logMessageCallback != nil && eventType != "new_log" {
-			h.logMessageCallback(msg, "server-broadcast", "all")
-		}
-
-		// Broadcast to filtered clients
-		h.mutex.Lock()
-		for client := range h.clients {
-			// Filter by station if specified
-			clientStation := client.GetMetadata("station")
-			if station != "" && clientStation != "" && clientStation != station {
-				// Skip clients not subscribed to this station
-				continue
-			}
-
-			select {
-			case client.send <- msg:
-			default:
-				close(client.send)
-				delete(h.clients, client)
-				h.logger.Infof("Client %s removed due to send buffer full", client.id)
-			}
-		}
-		h.mutex.Unlock()
-	}
-}
-
 // BroadcastEvent creates and sends a structured event message to all clients
 // It also handles redaction of sensitive information for unauthenticated clients
 func (h *Hub) BroadcastEvent(eventType string, content any) {
@@ -240,6 +137,7 @@ func (h *Hub) BroadcastEvent(eventType string, content any) {
 			}
 
 			// Send directly to this client
+			h.logger.Infof("Sending %s event to client %s", eventType, c.id)
 			c.send <- msg
 		}
 	} else {

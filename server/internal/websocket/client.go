@@ -153,14 +153,12 @@ func (c *Client) WritePump() {
 			}
 
 			if !ok {
-				// The hub closed the channel
 				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
 					c.logger.Error(err, "Failed to write close message")
 				}
 				return
 			}
 
-			// Marshal the message
 			messageBytes, err := json.Marshal(message)
 			if err != nil {
 				c.logger.Error(err, "Failed to marshal message")
@@ -203,7 +201,6 @@ func (c *Client) WritePump() {
 			}
 
 		case <-heartbeatTicker.C:
-			// Send heartbeat message
 			c.logger.Debug("Sending heartbeat to client")
 			heartbeat := models.WebSocketMessage{
 				Type:    "heartbeat",
