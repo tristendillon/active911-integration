@@ -72,6 +72,13 @@ func (h *Handler) HandleDashboardConnection(w http.ResponseWriter, r *http.Reque
 		client.remoteAddr = r.RemoteAddr
 	}
 
+	station := r.URL.Query().Get("station")
+	if station != "" {
+		client.metadata["station"] = station
+	}
+
+	client.metadata["requestURI"] = r.RequestURI
+
 	h.logger.Infof("New dashboard WebSocket client created with ID %s, authentication status: %v",
 		client.id, client.isAuthenticated)
 
