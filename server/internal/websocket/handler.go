@@ -64,7 +64,7 @@ func (h *Handler) HandleDashboardConnection(w http.ResponseWriter, r *http.Reque
 
 	// Create a new client with authentication status
 	client := NewClient(h.dashboardHub, conn, h.logger, authInfo.Authenticated)
-	
+
 	// Add user agent to the client metadata
 	client.userAgent = r.UserAgent()
 	// Add remote address from the HTTP request
@@ -108,14 +108,14 @@ func (h *Handler) HandleClientConnection(w http.ResponseWriter, r *http.Request)
 
 	// Create a new client with authentication status
 	client := NewClient(h.clientHub, conn, h.logger, authInfo.Authenticated)
-	
+
 	// Add user agent to the client metadata
 	client.userAgent = r.UserAgent()
 	// Add remote address from the HTTP request
 	if r.RemoteAddr != "" {
 		client.remoteAddr = r.RemoteAddr
 	}
-	
+
 	h.logger.Infof("New client control WebSocket client created with ID %s, authentication status: %v",
 		client.id, authInfo.Authenticated)
 
@@ -179,8 +179,12 @@ func (h *Handler) HandleLogsConnection(w http.ResponseWriter, r *http.Request) {
 
 	// Create a new client with authentication status
 	client := NewClient(h.logsHub, conn, h.logger, authInfo.Authenticated)
-	
+	station := r.URL.Query().Get("station")
+	if station != "" {
+		client.metadata["station"] = station
+	}
 	// Add user agent to the client metadata
+	client.metadata["requestURI"] = r.RequestURI
 	client.userAgent = r.UserAgent()
 	// Add remote address from the HTTP request
 	if r.RemoteAddr != "" {
@@ -237,20 +241,20 @@ func (h *Handler) getConnectionDetails(hub *Hub) []models.ConnectionDetail {
 	if hub == nil {
 		return []models.ConnectionDetail{}
 	}
-	
+
 	// Get clients from the hub
 	clients := hub.GetClients()
 	details := make([]models.ConnectionDetail, 0, len(clients))
-	
+
 	// Convert each client to a ConnectionDetail
 	for _, client := range clients {
 		lastHeartbeat := &client.lastHeartbeat
-		
+
 		// If lastHeartbeat is zero time, don't include it
 		if client.lastHeartbeat.IsZero() {
 			lastHeartbeat = nil
 		}
-		
+
 		detail := models.ConnectionDetail{
 			ID:                client.id,
 			ConnectedAt:       client.connectedAt,
@@ -263,9 +267,9 @@ func (h *Handler) getConnectionDetails(hub *Hub) []models.ConnectionDetail {
 			Metadata:          client.metadata,
 			LastHeartbeatSent: lastHeartbeat,
 		}
-		
+
 		details = append(details, detail)
 	}
-	
+
 	return details
 }

@@ -50,9 +50,10 @@ const pingMessage = {
 
 interface UseClientListenerOptions {
   password?: string;
+  station?: string;
 }
 
-export function useClientListener({ password }: UseClientListenerOptions = {}) {
+export function useClientListener({ password, station }: UseClientListenerOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
 
   // Track connection ID to ensure we only handle events from the current connection
@@ -93,10 +94,14 @@ export function useClientListener({ password }: UseClientListenerOptions = {}) {
 
     const attemptConnect = () => {
       if (!isMountedRef.current) return;
-
-      // Build WebSocket URL with current password
-      const queryParams = password ? `?password=${password}` : '';
-      const wsUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/client${queryParams}`;
+      const searchParams = new URLSearchParams();
+      if (password) {
+        searchParams.set('password', password);
+      }
+      if (station) {
+        searchParams.set('station', station);
+      }
+      const wsUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/client?${searchParams.toString()}`;
 
       try {
         const websocket = new WebSocket(wsUrl);

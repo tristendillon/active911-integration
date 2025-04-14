@@ -68,6 +68,7 @@ export function DashboardProvider({
     pagination
   } = useDashboardSocket({
     password,
+    station,
   });
 
   // Add markers from alerts

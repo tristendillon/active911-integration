@@ -56,9 +56,10 @@ interface UseDashboardSocketOptions {
   password?: string;
   page?: number;
   limit?: number;
+  station?: string;
 }
 
-export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketOptions = {}) {
+export function useDashboardSocket({ password, limit = 10, station }: UseDashboardSocketOptions = {}) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
@@ -171,6 +172,9 @@ export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketO
       const queryParams = new URLSearchParams();
       if (password) {
         queryParams.set('password', password);
+      }
+      if (station) {
+        queryParams.set('station', station);
       }
 
       const wsUrl = `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/ws/dashboard?${queryParams.toString()}`;

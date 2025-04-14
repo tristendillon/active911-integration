@@ -23,7 +23,7 @@ export default function DashboardContainer({ password, station, sound }: Dashboa
     ? `${process.env.NEXT_PUBLIC_URL}/${password}/d/${station.id}?sound=${sound ? 'on' : 'off'}${deviceParam}`
     : `${process.env.NEXT_PUBLIC_URL}/${password}/d?sound=${sound ? 'on' : 'off'}${deviceParam}`;
   const [iframeSrc, setIframeSrc] = useState(url);
-  const { emitListener } = useClientListener({ password });
+  const { emitListener } = useClientListener({ password, station: station?.id });
 
   useEffect(() => {
     if (password === 'public') {
