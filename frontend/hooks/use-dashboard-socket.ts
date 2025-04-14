@@ -7,7 +7,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 // Create singleton EventEmitter outside the hook to prevent multiple instances
 export const dashboardEmitter = new EventEmitter();
 // Increase max listeners to prevent potential warnings
-dashboardEmitter.setMaxListeners(20);
+dashboardEmitter.setMaxListeners(100);
 
 // Create a global connection tracker to prevent multiple connections
 const connectionTracker = {

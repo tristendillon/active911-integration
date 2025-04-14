@@ -8,6 +8,9 @@ export const clientEmitter = new EventEmitter();
 // Increase max listeners to prevent potential warnings
 clientEmitter.setMaxListeners(100);
 
+// Constants for reconnection
+const PERIODIC_RECONNECT_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
+
 // Create a global connection tracker to prevent multiple connections
 const connectionTracker = {
   activeConnection: null as WebSocket | null,
@@ -63,6 +66,8 @@ export function useClientListener({ password, station }: UseClientListenerOption
   // Track reconnection attempts and timeout
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Track periodic reconnection interval
+  const periodicReconnectIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const maxReconnectAttempts = 5;
   const reconnectBaseDelay = 1000; // 1 second initial delay
 
@@ -71,6 +76,12 @@ export function useClientListener({ password, station }: UseClientListenerOption
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
+    }
+
+    // Clear periodic reconnect interval
+    if (periodicReconnectIntervalRef.current) {
+      clearInterval(periodicReconnectIntervalRef.current);
+      periodicReconnectIntervalRef.current = null;
     }
   }, []);
 
@@ -117,6 +128,29 @@ export function useClientListener({ password, station }: UseClientListenerOption
           setIsConnected(true);
           reconnectAttemptsRef.current = 0;
           connectionTracker.notifyListeners();
+
+          // Set up the periodic reconnection interval
+          if (periodicReconnectIntervalRef.current) {
+            clearInterval(periodicReconnectIntervalRef.current);
+          }
+
+          periodicReconnectIntervalRef.current = setInterval(() => {
+            if (isMountedRef.current) {
+              console.log(`Performing scheduled client reconnection after ${PERIODIC_RECONNECT_INTERVAL/60000} minutes`);
+              // Force disconnect and reconnect
+              if (websocket && websocket.readyState === WebSocket.OPEN) {
+                // Mark as manually terminated to prevent auto reconnect in the onclose handler
+                (websocket as any).__manuallyTerminated = true;
+                websocket.close();
+              }
+              // Reconnect after a short delay to ensure the previous connection is fully closed
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  connectWebSocket();
+                }
+              }, 1000);
+            }
+          }, PERIODIC_RECONNECT_INTERVAL);
         };
 
         websocket.onclose = (event) => {
@@ -210,7 +244,7 @@ export function useClientListener({ password, station }: UseClientListenerOption
     return () => {
       cleanupWebSocket();
     };
-  }, [cleanupWebSocket, password]);
+  }, [cleanupWebSocket, password, station]);
 
   // Initialize WebSocket on mount
   useEffect(() => {
@@ -232,11 +266,11 @@ export function useClientListener({ password, station }: UseClientListenerOption
     };
   }, [connectWebSocket]);
 
-  // Only reconnect when password changes
+  // Only reconnect when password or station changes
   useEffect(() => {
     if (!isMountedRef.current) return;
     connectWebSocket();
-  }, [password, connectWebSocket]);
+  }, [password, station, connectWebSocket]);
 
   // Handle visibility changes - reconnect when tab becomes visible
   useEffect(() => {
