@@ -6,6 +6,7 @@ import { Separator } from './ui/separator';
 import { CommandShortcut } from './ui/command';
 import { cn } from '@/lib/utils';
 import { dashboardEmitter } from '@/hooks/use-dashboard-socket';
+import { Skeleton } from './ui/skeleton';
 
 interface AlertItemProps {
   units?: string[];
@@ -18,6 +19,32 @@ interface AlertItemProps {
         maxHeight?: string;
       }
     | boolean;
+}
+
+export function AlertItemSkeleton({ isFireTV = false, showDetails = true }: { isFireTV?: boolean; showDetails?: boolean }) {
+  return (
+    <div className={cn('flex flex-col border border-border rounded-md', isFireTV ? 'p-4 gap-3' : 'p-3 gap-2')}>
+      <div className="flex flex-row justify-between items-center">
+        <Skeleton className={cn(isFireTV ? 'h-7 w-3/4' : 'h-6 w-3/4', 'bg-foreground/20')} />
+        <Skeleton className={cn(isFireTV ? 'h-6 w-28' : 'h-5 w-24', 'bg-foreground/20')} />
+      </div>
+      <Separator />
+      {showDetails && (
+        <div className="px-4 py-2">
+          <Skeleton className="h-5 w-full mb-2 bg-foreground/20" />
+          <Skeleton className="h-5 w-5/6 mb-2 bg-foreground/20" />
+          <Skeleton className="h-5 w-4/6 mb-2 bg-foreground/20" />
+        </div>
+      )}
+      <div className="flex flex-row justify-between items-center mt-1">
+        <Skeleton className={cn(isFireTV ? 'h-6 w-1/3' : 'h-5 w-1/3', 'bg-foreground/20')} />
+        <div className={cn('flex flex-row items-center h-full', isFireTV ? 'gap-4' : 'gap-3')}>
+          <Skeleton className={cn(isFireTV ? 'h-7 w-16' : 'h-6 w-14', 'bg-foreground/20')} />
+          <Skeleton className={cn(isFireTV ? 'h-7 w-16' : 'h-6 w-14', 'bg-foreground/20')} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function AlertItem({ units, alert, noEmit, isFireTV = false, showDetails = true }: AlertItemProps) {
@@ -36,6 +63,7 @@ export default function AlertItem({ units, alert, noEmit, isFireTV = false, show
       dashboardEmitter.emit('new_alert', alert);
     }
   };
+
   return (
     <div className={cn('flex flex-col border border-border rounded-md', isFireTV ? 'p-3 gap-2' : 'p-2 gap-1', noEmit ? 'cursor-default' : 'cursor-pointer')} onClick={handleClick}>
       <div className="flex flex-row justify-between items-center">

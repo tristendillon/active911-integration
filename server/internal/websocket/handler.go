@@ -45,13 +45,9 @@ func NewHandler(dashboardHub, clientHub, logsHub *Hub, auth *auth.Authenticator,
 func (h *Handler) HandleDashboardConnection(w http.ResponseWriter, r *http.Request) {
 	// Check authentication
 	authInfo := h.auth.GetAuthInfo(r)
-	h.logger.Infof("Dashboard WebSocket connection authentication status: %v, password provided: %v", 
+	h.logger.Infof("Dashboard WebSocket connection authentication status: %v, password provided: %v",
 		authInfo.Authenticated, authInfo.Password != "")
 
-	// Get the station parameter if provided
-	station := r.URL.Query().Get("station")
-	h.logger.Infof("Dashboard WebSocket connection requested for station: %s", station)
-	
 	// Note: Authentication check is commented out to allow public access with redacted data
 	// if !authInfo.Authenticated {
 	// 	http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -69,12 +65,13 @@ func (h *Handler) HandleDashboardConnection(w http.ResponseWriter, r *http.Reque
 	// Create a new client with authentication status
 	client := NewClient(h.dashboardHub, conn, h.logger, authInfo.Authenticated)
 	
-	// Store station in client metadata
-	if station != "" {
-		client.SetMetadata("station", station)
-		h.logger.Infof("Client %s associated with station %s", client.id, station)
+	// Add user agent to the client metadata
+	client.userAgent = r.UserAgent()
+	// Add remote address from the HTTP request
+	if r.RemoteAddr != "" {
+		client.remoteAddr = r.RemoteAddr
 	}
-	
+
 	h.logger.Infof("New dashboard WebSocket client created with ID %s, authentication status: %v",
 		client.id, client.isAuthenticated)
 
@@ -99,7 +96,7 @@ func (h *Handler) HandleDashboardConnection(w http.ResponseWriter, r *http.Reque
 func (h *Handler) HandleClientConnection(w http.ResponseWriter, r *http.Request) {
 	// Check authentication for sending commands (but allow connections for listening)
 	authInfo := h.auth.GetAuthInfo(r)
-	h.logger.Infof("Client WebSocket connection authentication status: %v, password provided: %v", 
+	h.logger.Infof("Client WebSocket connection authentication status: %v, password provided: %v",
 		authInfo.Authenticated, authInfo.Password != "")
 
 	// Upgrade HTTP connection to WebSocket
@@ -111,7 +108,15 @@ func (h *Handler) HandleClientConnection(w http.ResponseWriter, r *http.Request)
 
 	// Create a new client with authentication status
 	client := NewClient(h.clientHub, conn, h.logger, authInfo.Authenticated)
-	h.logger.Infof("New client control WebSocket client created with ID %s, authentication status: %v", 
+	
+	// Add user agent to the client metadata
+	client.userAgent = r.UserAgent()
+	// Add remote address from the HTTP request
+	if r.RemoteAddr != "" {
+		client.remoteAddr = r.RemoteAddr
+	}
+	
+	h.logger.Infof("New client control WebSocket client created with ID %s, authentication status: %v",
 		client.id, authInfo.Authenticated)
 
 	// Register client with hub
@@ -121,7 +126,7 @@ func (h *Handler) HandleClientConnection(w http.ResponseWriter, r *http.Request)
 	go client.WritePump()
 	client.ReadPump(func(message models.WebSocketMessage, client *Client) {
 		h.logger.Infof("Received message from client control %s: %s", client.id, message.Type)
-		
+
 		// Handle different message types
 		switch message.Type {
 		case "refresh":
@@ -131,11 +136,11 @@ func (h *Handler) HandleClientConnection(w http.ResponseWriter, r *http.Request)
 				h.logger.Warnf("Unauthorized attempt to send refresh command by client %s", client.id)
 				return
 			}
-			
+
 			// Broadcast refresh to all clients, including unauthenticated ones
 			h.clientHub.BroadcastEvent("refresh", nil)
 			h.logger.Infof("Refresh broadcast triggered by authenticated client %s", client.id)
-			
+
 		case "redirect":
 			// Only authenticated clients can trigger redirect
 			if !client.isAuthenticated {
@@ -143,11 +148,11 @@ func (h *Handler) HandleClientConnection(w http.ResponseWriter, r *http.Request)
 				h.logger.Warnf("Unauthorized attempt to send redirect command by client %s", client.id)
 				return
 			}
-			
+
 			// Broadcast redirect to all clients, including unauthenticated ones
 			h.clientHub.BroadcastEvent("redirect", message.Content)
 			h.logger.Infof("Redirect broadcast triggered by authenticated client %s", client.id)
-			
+
 		default:
 			// Echo other message types back to the client
 			client.SendMessage("echo", message.Content)
@@ -174,6 +179,13 @@ func (h *Handler) HandleLogsConnection(w http.ResponseWriter, r *http.Request) {
 
 	// Create a new client with authentication status
 	client := NewClient(h.logsHub, conn, h.logger, authInfo.Authenticated)
+	
+	// Add user agent to the client metadata
+	client.userAgent = r.UserAgent()
+	// Add remote address from the HTTP request
+	if r.RemoteAddr != "" {
+		client.remoteAddr = r.RemoteAddr
+	}
 
 	// Register client with hub
 	h.logsHub.Register(client)
@@ -188,4 +200,72 @@ func (h *Handler) HandleLogsConnection(w http.ResponseWriter, r *http.Request) {
 			client.SendMessage("echo", message.Content)
 		}
 	})
+}
+
+// GetConnectionCounts returns the connection counts for all hubs
+func (h *Handler) GetConnectionCounts() map[string]int {
+	counts := make(map[string]int)
+
+	// Get counts from each hub
+	counts[string(HubTypeDashboard)] = h.dashboardHub.ClientCount()
+	counts[string(HubTypeClient)] = h.clientHub.ClientCount()
+	counts[string(HubTypeLogs)] = h.logsHub.ClientCount()
+
+	// Calculate total
+	counts["total"] = counts[string(HubTypeDashboard)] + counts[string(HubTypeClient)] + counts[string(HubTypeLogs)]
+
+	return counts
+}
+
+// GetLogConnectionDetails returns detailed information about active log connections
+func (h *Handler) GetLogConnectionDetails() []models.ConnectionDetail {
+	return h.getConnectionDetails(h.logsHub)
+}
+
+// GetDashboardConnectionDetails returns detailed information about active dashboard connections
+func (h *Handler) GetDashboardConnectionDetails() []models.ConnectionDetail {
+	return h.getConnectionDetails(h.dashboardHub)
+}
+
+// GetClientConnectionDetails returns detailed information about active client connections
+func (h *Handler) GetClientConnectionDetails() []models.ConnectionDetail {
+	return h.getConnectionDetails(h.clientHub)
+}
+
+// getConnectionDetails is a helper function to get detailed information about clients in a hub
+func (h *Handler) getConnectionDetails(hub *Hub) []models.ConnectionDetail {
+	if hub == nil {
+		return []models.ConnectionDetail{}
+	}
+	
+	// Get clients from the hub
+	clients := hub.GetClients()
+	details := make([]models.ConnectionDetail, 0, len(clients))
+	
+	// Convert each client to a ConnectionDetail
+	for _, client := range clients {
+		lastHeartbeat := &client.lastHeartbeat
+		
+		// If lastHeartbeat is zero time, don't include it
+		if client.lastHeartbeat.IsZero() {
+			lastHeartbeat = nil
+		}
+		
+		detail := models.ConnectionDetail{
+			ID:                client.id,
+			ConnectedAt:       client.connectedAt,
+			IsAuthenticated:   client.isAuthenticated,
+			RemoteAddr:        client.remoteAddr,
+			LastActivity:      client.lastActivity,
+			MessagesSent:      client.messagesSent,
+			MessagesReceived:  client.messagesReceived,
+			UserAgent:         client.userAgent,
+			Metadata:          client.metadata,
+			LastHeartbeatSent: lastHeartbeat,
+		}
+		
+		details = append(details, detail)
+	}
+	
+	return details
 }

@@ -49,6 +49,9 @@ const pingMessage = {
   type: 'ping',
 };
 
+// Constants for reconnection
+const PERIODIC_RECONNECT_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
+
 interface UseDashboardSocketOptions {
   password?: string;
   page?: number;
@@ -70,6 +73,8 @@ export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketO
   // Track reconnection attempts and timeout
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Track periodic reconnection interval
+  const periodicReconnectIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const maxReconnectAttempts = 5;
   const reconnectBaseDelay = 1000; // 1 second initial delay
 
@@ -83,8 +88,11 @@ export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketO
       if (password) {
         queryParams.set('password', password);
       }
+      const abortController = new AbortController();
+      const timeout = setTimeout(() => abortController.abort(), 10000);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?${queryParams.toString()}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/alerts?${queryParams.toString()}`, { signal: abortController.signal });
+
 
       if (!isMountedRef.current) return;
 
@@ -95,14 +103,29 @@ export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketO
         setAlerts([]);
       } else {
         setAlerts(fetchedAlerts);
+        for (const alert of fetchedAlerts) {
+          // Check if the alert is recent (within the last 5 minutes)
+          const alertTime = new Date(alert.alert.stamp * 1000);
+          const currentTime = new Date();
+          const timeDifferenceMs = currentTime.getTime() - alertTime.getTime();
+          const isRecentAlert = timeDifferenceMs <= 2 * 60 * 1000; // 2 minutes in milliseconds
+          if (isRecentAlert) {
+            dashboardEmitter.emit('new_alert', alert);
+          }
+        }
       }
 
       // Update pagination information based on API response
       setHasNextPage(data.next !== null);
       setTotal(data.total || 0);
       setLoading(false);
+      clearTimeout(timeout);
     } catch (error) {
-      console.error('Error fetching alerts:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Fetch aborted');
+      } else {
+        console.error('Error fetching alerts:', error);
+      }
       if (isMountedRef.current) {
         setLoading(false);
       }
@@ -126,6 +149,12 @@ export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketO
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
+    }
+
+    // Clear periodic reconnect interval
+    if (periodicReconnectIntervalRef.current) {
+      clearInterval(periodicReconnectIntervalRef.current);
+      periodicReconnectIntervalRef.current = null;
     }
   }, []);
 
@@ -160,6 +189,29 @@ export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketO
           setIsConnected(true);
           reconnectAttemptsRef.current = 0;
           connectionTracker.notifyListeners();
+
+          // Set up the periodic reconnection interval
+          if (periodicReconnectIntervalRef.current) {
+            clearInterval(periodicReconnectIntervalRef.current);
+          }
+
+          periodicReconnectIntervalRef.current = setInterval(() => {
+            if (isMountedRef.current) {
+              console.log(`Performing scheduled reconnection after ${PERIODIC_RECONNECT_INTERVAL/60000} minutes`);
+              // Force disconnect and reconnect
+              if (websocket && websocket.readyState === WebSocket.OPEN) {
+                // Mark as manually terminated to prevent auto reconnect in the onclose handler
+                (websocket as any).__manuallyTerminated = true;
+                websocket.close();
+              }
+              // Reconnect after a short delay to ensure the previous connection is fully closed
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  connectWebSocket();
+                }
+              }, 1000);
+            }
+          }, PERIODIC_RECONNECT_INTERVAL);
         };
 
         websocket.onclose = (event) => {
@@ -208,7 +260,6 @@ export function useDashboardSocket({ password, limit = 10 }: UseDashboardSocketO
           if (isMountedRef.current) {
             setIsConnected(false);
           }
-          // Note: We don't clean up here as the onclose handler will be called after error
         };
 
         websocket.onmessage = (event) => {

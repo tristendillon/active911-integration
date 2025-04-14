@@ -86,6 +86,7 @@ export default function Dashboard() {
     }
   }, [alerts.data, map]);
 
+
   return (
     <div className="w-full h-screen">
       <div className={isFireTV || isSilk ? 'scale-[0.6] origin-top-left w-[166%] h-[166%]' : 'w-full h-full'}>
@@ -98,7 +99,7 @@ export default function Dashboard() {
             <div className="w-full h-full block">
               <Header />
               <div className={cn('w-full relative h-[calc(100%-150px)]', isFireTV || (isSilk && 'h-[calc(166%-150px)]'))}>
-                <GoogleMapComponent id="dashboard">
+                <GoogleMapComponent id="dashboard" mapType={google.maps.MapTypeId.ROADMAP}>
                   {alerts.data.map((alert) => (
                     <React.Fragment key={alert.alert.id}>
                       {alert.alert.lat && alert.alert.lon &&

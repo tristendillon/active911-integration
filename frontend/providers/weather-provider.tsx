@@ -26,13 +26,25 @@ export function WeatherProvider({ children }: WeatherProviderProps) {
   const fetchWeather = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/weather`);
-      const data = await res.json();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      if (res.ok && data.success) {
-        setWeather(data.data);
-      } else {
-        console.error('Failed to fetch weather data:', data.error || 'Unknown error');
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/weather`, {
+          signal: controller.signal
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setWeather(data.data);
+        } else {
+          console.error('Failed to fetch weather data:', data.error || 'Unknown error');
+        }
+        clearTimeout(timeoutId);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error('Weather fetch request timed out');
+        }
+        throw error;
       }
     } catch (error) {
       console.error('Error fetching weather data:', error);

@@ -105,6 +105,20 @@ type APIResponse struct {
 	Meta    interface{} `json:"meta,omitempty"`
 }
 
+// ConnectionDetail represents detailed information about a WebSocket connection
+type ConnectionDetail struct {
+	ID                string            `json:"id"`                // Client ID
+	ConnectedAt       time.Time         `json:"connected_at"`      // When the client connected
+	IsAuthenticated   bool              `json:"is_authenticated"`  // Authentication status
+	RemoteAddr        string            `json:"remote_addr"`       // Remote address
+	LastActivity      time.Time         `json:"last_activity"`     // Last message/activity time
+	MessagesSent      int               `json:"messages_sent"`     // Messages sent to client
+	MessagesReceived  int               `json:"messages_received"` // Messages received from client
+	UserAgent         string            `json:"user_agent"`        // User agent if available
+	Metadata          map[string]string `json:"metadata"`          // Client metadata
+	LastHeartbeatSent *time.Time        `json:"last_heartbeat_sent,omitempty"` // Last heartbeat time
+}
+
 // DeepCopyAlertPtr creates a deep copy of an Alert struct from a pointer
 // and returns a new pointer to the copy
 func DeepCopyAlertPtr(original *Alert) *Alert {

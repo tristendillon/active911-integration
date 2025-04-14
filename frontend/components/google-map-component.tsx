@@ -23,9 +23,10 @@ interface GoogleMapComponentProps {
   className?: string;
   children?: React.ReactNode;
   id?: string;
+  mapType?: google.maps.MapTypeId;
 }
 
-export function GoogleMapComponent({ className, children, id }: GoogleMapComponentProps) {
+export function GoogleMapComponent({ className, children, id, mapType = google.maps.MapTypeId.HYBRID }: GoogleMapComponentProps) {
   const { setMap } = useMap();
 
   // Store a reference to the map when it's loaded
@@ -66,7 +67,7 @@ export function GoogleMapComponent({ className, children, id }: GoogleMapCompone
           zoomControl: false,
           scrollwheel: false,
           disableDefaultUI: true,
-          mapTypeId: google.maps.MapTypeId.HYBRID,
+          mapTypeId: mapType,
           minZoom: 9,
           maxZoom: 20,
           tilt: 0

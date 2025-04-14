@@ -16,21 +16,24 @@ import (
 	"github.com/user/alerting/server/internal/logging"
 	"github.com/user/alerting/server/internal/models"
 	"github.com/user/alerting/server/internal/storage"
+	"github.com/user/alerting/server/internal/websocket"
 )
 
 // Handler handles API requests
 type Handler struct {
-	store        *storage.Storage
-	logger       *logging.Logger
-	eventEmitter func(string, any)
+	store          *storage.Storage
+	logger         *logging.Logger
+	eventEmitter   func(string, any)
+	websocketHandler *websocket.Handler
 }
 
 // New creates a new API handler
-func New(store *storage.Storage, logger *logging.Logger, eventEmitter func(string, interface{})) *Handler {
+func New(store *storage.Storage, logger *logging.Logger, eventEmitter func(string, interface{}), wsHandler *websocket.Handler) *Handler {
 	return &Handler{
-		store:        store,
-		logger:       logger,
-		eventEmitter: eventEmitter,
+		store:            store,
+		logger:           logger,
+		eventEmitter:     eventEmitter,
+		websocketHandler: wsHandler,
 	}
 }
 
@@ -45,6 +48,12 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 	// Logs endpoints
 	r.HandleFunc("/logs", h.GetLogs).Methods("GET")
 	r.HandleFunc("/logs/{id}", h.GetLogByID).Methods("GET")
+	
+	// WebSocket stats endpoints
+	r.HandleFunc("/connections", h.GetConnectionStats).Methods("GET")
+	r.HandleFunc("/connections/logs", h.GetLogConnectionDetails).Methods("GET")
+	r.HandleFunc("/connections/dashboard", h.GetDashboardConnectionDetails).Methods("GET")
+	r.HandleFunc("/connections/client", h.GetClientConnectionDetails).Methods("GET")
 }
 
 // GetAlerts handles GET /alerts requests
@@ -529,6 +538,122 @@ func (h *Handler) GetLogByID(w http.ResponseWriter, r *http.Request) {
 		Data:    log,
 	}
 
+	h.respondWithJSON(w, http.StatusOK, response)
+}
+
+// GetConnectionStats handles GET /connections requests
+// It returns the count of active websocket connections for each hub
+func (h *Handler) GetConnectionStats(w http.ResponseWriter, r *http.Request) {
+	// Get authentication info from context
+	authInfo, _ := auth.GetAuthInfoFromContext(r.Context())
+	if !authInfo.Authenticated {
+		h.respondWithError(w, http.StatusUnauthorized, "Unauthorized: Invalid API password")
+		h.logger.Warn("Unauthorized attempt to access connection stats")
+		return
+	}
+
+	// Check if websocket handler is set
+	if h.websocketHandler == nil {
+		h.respondWithError(w, http.StatusInternalServerError, "WebSocket handler not available")
+		return
+	}
+	
+	// Get connection counts from websocket handler
+	counts := h.websocketHandler.GetConnectionCounts()
+	
+	// Build response
+	response := models.APIResponse{
+		Success: true,
+		Data:    counts,
+	}
+	
+	h.respondWithJSON(w, http.StatusOK, response)
+}
+
+// GetLogConnectionDetails handles GET /connections/logs requests
+// It returns detailed information about active log websocket connections
+func (h *Handler) GetLogConnectionDetails(w http.ResponseWriter, r *http.Request) {
+	// Get authentication info from context
+	authInfo, _ := auth.GetAuthInfoFromContext(r.Context())
+	if !authInfo.Authenticated {
+		h.respondWithError(w, http.StatusUnauthorized, "Unauthorized: Invalid API password")
+		h.logger.Warn("Unauthorized attempt to access log connection details")
+		return
+	}
+
+	// Check if websocket handler is set
+	if h.websocketHandler == nil {
+		h.respondWithError(w, http.StatusInternalServerError, "WebSocket handler not available")
+		return
+	}
+	
+	// Get detailed log connection info
+	details := h.websocketHandler.GetLogConnectionDetails()
+	
+	// Build response
+	response := models.APIResponse{
+		Success: true,
+		Data:    details,
+	}
+	
+	h.respondWithJSON(w, http.StatusOK, response)
+}
+
+// GetDashboardConnectionDetails handles GET /connections/dashboard requests
+// It returns detailed information about active dashboard websocket connections
+func (h *Handler) GetDashboardConnectionDetails(w http.ResponseWriter, r *http.Request) {
+	// Get authentication info from context
+	authInfo, _ := auth.GetAuthInfoFromContext(r.Context())
+	if !authInfo.Authenticated {
+		h.respondWithError(w, http.StatusUnauthorized, "Unauthorized: Invalid API password")
+		h.logger.Warn("Unauthorized attempt to access dashboard connection details")
+		return
+	}
+
+	// Check if websocket handler is set
+	if h.websocketHandler == nil {
+		h.respondWithError(w, http.StatusInternalServerError, "WebSocket handler not available")
+		return
+	}
+	
+	// Get detailed dashboard connection info
+	details := h.websocketHandler.GetDashboardConnectionDetails()
+	
+	// Build response
+	response := models.APIResponse{
+		Success: true,
+		Data:    details,
+	}
+	
+	h.respondWithJSON(w, http.StatusOK, response)
+}
+
+// GetClientConnectionDetails handles GET /connections/client requests
+// It returns detailed information about active client websocket connections
+func (h *Handler) GetClientConnectionDetails(w http.ResponseWriter, r *http.Request) {
+	// Get authentication info from context
+	authInfo, _ := auth.GetAuthInfoFromContext(r.Context())
+	if !authInfo.Authenticated {
+		h.respondWithError(w, http.StatusUnauthorized, "Unauthorized: Invalid API password")
+		h.logger.Warn("Unauthorized attempt to access client connection details")
+		return
+	}
+
+	// Check if websocket handler is set
+	if h.websocketHandler == nil {
+		h.respondWithError(w, http.StatusInternalServerError, "WebSocket handler not available")
+		return
+	}
+	
+	// Get detailed client connection info
+	details := h.websocketHandler.GetClientConnectionDetails()
+	
+	// Build response
+	response := models.APIResponse{
+		Success: true,
+		Data:    details,
+	}
+	
 	h.respondWithJSON(w, http.StatusOK, response)
 }
 

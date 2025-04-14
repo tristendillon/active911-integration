@@ -143,11 +143,14 @@ func main() {
 	// Initialize the weather handler
 	weatherHandler := api.NewWeatherHandler(weatherService)
 
-	// Create the API handler
+	// Initialize the WebSocket handler first so it can be passed to the API handler
+	wsHandler := websocket.NewHandler(dashboardHub, clientHub, logsHub, authenticator, logger)
+	
+	// Create the API handler with WebSocket handler reference
 	apiHandler := api.New(store, logger, func(eventType string, data any) {
 		// Broadcast API events to websocket clients
 		dashboardHub.BroadcastEvent(eventType, data)
-	})
+	}, wsHandler)
 
 	// Initialize the hydrant handler
 	if err := store.InitHydrantTable(); err != nil {
@@ -163,7 +166,6 @@ func main() {
 	hydrantHandler.RegisterRoutes(r)
 
 	// Register WebSocket handlers
-	wsHandler := websocket.NewHandler(dashboardHub, clientHub, logsHub, authenticator, logger)
 	r.HandleFunc("/ws/dashboard", wsHandler.HandleDashboardConnection)
 	r.HandleFunc("/ws/client", wsHandler.HandleClientConnection)
 	r.HandleFunc("/ws/logs", wsHandler.HandleLogsConnection)

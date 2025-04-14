@@ -26,7 +26,7 @@ export const useMap = (id?: string) => {
   };
 };
 
-const libraries = ['places', 'drawing', 'geometry', 'routes'];
+const libraries = ['places', 'drawing', 'geometry', 'routes', 'marker'];
 
 export function MapProvider({ children }: { children: ReactNode }) {
   const [maps, setMaps] = useState<Record<string, google.maps.Map>>({});

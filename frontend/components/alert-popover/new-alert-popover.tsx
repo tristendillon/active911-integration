@@ -1,4 +1,6 @@
-import type { Alert } from '@/lib/types';
+'use client'
+
+import type { Alert, Hydrant } from '@/lib/types';
 import { useDashboard } from '@/providers/dashboard-provider';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -17,12 +19,14 @@ interface NewAlertPopoverProps {
 export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) {
   const [currentAlert, setCurrentAlert] = useState<Alert | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [hydrants, setHydrants] = useState<Hydrant[]>([]);
+  const [alertTimestamp, setAlertTimestamp] = useState<number | null>(null);
 
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoDismissTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dismissedRef = useRef(false);
 
-  const { setIsNewAlert, map, units, emitListener } = useDashboard();
+  const { setIsNewAlert, units, emitListener } = useDashboard();
   const { playSound, stopSound } = useAlertAudio(sound);
 
   /** Dismiss the alert */
@@ -46,22 +50,46 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
 
     setTimeout(() => {
       setCurrentAlert(null);
+      setAlertTimestamp(null);
     }, 1000); // Allow exit animation to finish
   }, [setIsNewAlert, stopSound]);
+
+  /** Get elapsed time since alert arrived in seconds */
+  const getElapsedTime = useCallback(() => {
+    if (!alertTimestamp) return 0;
+    return Math.floor((Date.now() - alertTimestamp) / 1000);
+  }, [alertTimestamp]);
+
+  /** Reset alert UI state to prepare for a new alert */
+  const resetAlertState = useCallback(() => {
+    // Clear any existing timeouts
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+    }
+
+    if (autoDismissTimeoutRef.current) {
+      clearTimeout(autoDismissTimeoutRef.current);
+      autoDismissTimeoutRef.current = null;
+    }
+
+    // Reset state
+    dismissedRef.current = false;
+    stopSound();
+  }, [stopSound]);
 
   /** Handle new alert trigger */
   useEffect(() => {
     function handleNewAlert(newAlert: Alert) {
-      dismissedRef.current = false;
+      // Reset alert state to handle overriding an existing alert
+      resetAlertState();
 
-      // Clear any existing timeouts
-      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
-      if (autoDismissTimeoutRef.current) clearTimeout(autoDismissTimeoutRef.current);
-
+      // Store the alert and timestamp
       setCurrentAlert(newAlert);
+      const timestamp = new Date(newAlert.alert.stamp * 1000).getTime();
+      setAlertTimestamp(timestamp);
       setIsAnimating(true);
 
-      stopSound();
       playSound();
 
       animationTimeoutRef.current = setTimeout(() => {
@@ -78,13 +106,14 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
     emitListener('new_alert', handleNewAlert);
 
     return () => {
-      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
-      if (autoDismissTimeoutRef.current) clearTimeout(autoDismissTimeoutRef.current);
-      stopSound();
+      resetAlertState();
     };
-  }, [emitListener, setIsNewAlert, playSound, stopSound, dismissAlert]);
+  }, [emitListener, setIsNewAlert, playSound, dismissAlert, resetAlertState]);
 
   if (!currentAlert) return null;
+
+  // Calculate turnout time for use in child components
+  const turnoutTimeSeconds = getElapsedTime();
 
   return (
     <AnimatePresence>
@@ -94,17 +123,23 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
         animate={{ y: isAnimating ? 0 : '100%' }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 30, stiffness: 200 }}
+        key={currentAlert.alert.id || Date.now()} // Add a key to ensure re-render when alert changes
       >
         <div className="bg-secondary h-full w-full flex flex-col">
           <NewAlertHeader
             alert={currentAlert}
             onDismiss={dismissAlert}
             autoCloseTime={MAX_NEW_ALERT_TIME / 1000}
+            turnoutTimeSeconds={turnoutTimeSeconds > MAX_NEW_ALERT_TIME / 1000 ? 0 : turnoutTimeSeconds}
           />
           <div className="flex-1 flex flex-col h-[calc(100vh-10rem)] md:flex-row">
-            <NewAlertSidebar alert={currentAlert} units={units} />
+            <NewAlertSidebar
+              alert={currentAlert}
+              units={units}
+              hydrants={hydrants}
+            />
             <div className="md:h-auto md:flex-1 relative h-[60vh]">
-              <NewAlertMap alert={currentAlert} center={map.center} />
+              <NewAlertMap alert={currentAlert} setGlobalHydrants={setHydrants} />
             </div>
           </div>
         </div>

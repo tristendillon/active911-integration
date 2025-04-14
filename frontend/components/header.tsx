@@ -82,7 +82,23 @@ function ClockDisplay({ currentTime, isFireTV = false }: ClockDisplayProps) {
 // Weather component
 function WeatherDisplay({ weather, loading, isFireTV = false }: WeatherDisplayProps) {
   if (loading) {
-    return <WeatherSkeleton isFireTV={isFireTV} />;
+    return (
+      <div className="hidden md:block">
+        <div className="flex items-center gap-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className={`flex-shrink-0 w-[170px] ${isFireTV ? 'p-4' : 'p-3'} border-l last:border-r border-border`}>
+              <div className="flex flex-col items-center">
+                <Skeleton className={`${isFireTV ? 'h-5 w-16' : 'h-5 w-16'} mb-1 bg-muted-foreground/20`} />
+                <Skeleton className={`${isFireTV ? 'w-10 h-10 my-2' : 'w-8 h-8 my-1'} rounded-full bg-muted-foreground/20`} />
+                <Skeleton className={`${isFireTV ? 'h-6 w-20' : 'h-6 w-20'} mb-1 bg-muted-foreground/20`} />
+                <Skeleton className={`${isFireTV ? 'h-4 w-24' : 'h-4 w-24'} mb-1 bg-muted-foreground/20`} />
+                <Skeleton className={`${isFireTV ? 'h-4 w-20' : 'h-4 w-20'} bg-muted-foreground/20`} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!weather?.days?.length) {
@@ -159,33 +175,6 @@ function CompactDayWeather({ day, isToday, isFireTV = false }: DayWeatherProps &
 
         <div className={`flex justify-center w-full mt-1 ${detailsTextSize}`}>
           <span>Wind: {Math.round(day.windspeed)} mph {getWindDirection(day.winddir)}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WeatherSkeleton({ isFireTV = false }: { isFireTV?: boolean }) {
-  // Adjust sizes for Fire TV
-  const containerHeight = isFireTV ? 'h-20' : 'h-16';
-  const containerWidth = isFireTV ? 'w-72' : 'w-64';
-  const containerPadding = isFireTV ? 'p-4' : 'p-3';
-
-  const iconSize = isFireTV ? 'h-14 w-14' : 'h-12 w-12';
-  const textHeight1 = isFireTV ? 'h-7' : 'h-6';
-  const textWidth1 = isFireTV ? 'w-20' : 'w-16';
-  const textHeight2 = isFireTV ? 'h-5' : 'h-4';
-  const textWidth2 = isFireTV ? 'w-28' : 'w-24';
-
-  return (
-    <div
-      className={`hidden md:flex ${containerHeight} ${containerWidth} items-center justify-center bg-secondary/50 ${containerPadding} rounded-lg border border-border shadow-sm`}
-    >
-      <div className="flex items-center gap-3">
-        <Skeleton className={`${iconSize} rounded-full`} />
-        <div className="flex flex-col gap-2">
-          <Skeleton className={`${textHeight1} ${textWidth1}`} />
-          <Skeleton className={`${textHeight2} ${textWidth2}`} />
         </div>
       </div>
     </div>

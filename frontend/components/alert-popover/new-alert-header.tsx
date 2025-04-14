@@ -10,13 +10,14 @@ interface NewAlertHeaderProps {
   onDismiss: () => void;
   autoCloseTime: number;
   isFireTV?: boolean;
+  turnoutTimeSeconds: number;
 }
 
-export default function NewAlertHeader({ alert, onDismiss, autoCloseTime, isFireTV = false }: NewAlertHeaderProps) {
+export default function NewAlertHeader({ alert, onDismiss, autoCloseTime, isFireTV = false, turnoutTimeSeconds }: NewAlertHeaderProps) {
   const [elapsedMs, setElapsedMs] = useState(0);
-  const {isAmazonDevice} = useAmazonDevice()
+  const { isAmazonDevice } = useAmazonDevice();
   useEffect(() => {
-    const startTime = Date.now();
+    const startTime = Date.now() - turnoutTimeSeconds * 1000;
 
     // Set up interval to update elapsed time every 10ms for smoother stopwatch
     const intervalId = setInterval(() => {

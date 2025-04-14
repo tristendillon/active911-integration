@@ -32,13 +32,20 @@ var (
 
 // Client represents a connected websocket client
 type Client struct {
-	hub             *Hub
-	conn            *websocket.Conn
-	send            chan models.WebSocketMessage
-	id              string
-	logger          *logging.Logger
-	isAuthenticated bool // Track authentication status
-	metadata        map[string]string // Metadata for storing client-specific info like station
+	hub              *Hub
+	conn             *websocket.Conn
+	send             chan models.WebSocketMessage
+	id               string
+	logger           *logging.Logger
+	isAuthenticated  bool                // Track authentication status
+	metadata         map[string]string   // Metadata for storing client-specific info like station
+	connectedAt      time.Time           // When the client connected
+	lastActivity     time.Time           // Last time client sent/received a message
+	messagesSent     int                 // Number of messages sent to this client
+	messagesReceived int                 // Number of messages received from this client
+	remoteAddr       string              // Remote address of the client
+	userAgent        string              // User agent if available
+	lastHeartbeat    time.Time           // Last heartbeat sent to this client
 }
 
 // MessageHandler is a function that handles incoming messages
@@ -47,15 +54,39 @@ type MessageHandler func(message models.WebSocketMessage, client *Client)
 // NewClient creates a new websocket client
 func NewClient(hub *Hub, conn *websocket.Conn, logger *logging.Logger, isAuthenticated bool) *Client {
 	clientID := uuid.New().String()
+	now := time.Now()
+	
+	// Extract remote address and user agent if available
+	remoteAddr := ""
+	userAgent := ""
+	if conn.RemoteAddr() != nil {
+		remoteAddr = conn.RemoteAddr().String()
+	}
+	
+	if conn.UnderlyingConn() != nil {
+		if httpConn, ok := conn.UnderlyingConn().(interface{ RemoteAddr() string }); ok {
+			remoteAddr = httpConn.RemoteAddr()
+		}
+	}
+	
+	// We can't directly get the user agent from the WebSocket connection
+	// It would have to be passed from the HTTP request when upgrading
 
 	return &Client{
-		hub:             hub,
-		conn:            conn,
-		send:            make(chan models.WebSocketMessage, sendBufferSize),
-		id:              clientID,
-		logger:          logger.WithField("client_id", clientID),
-		isAuthenticated: isAuthenticated,
-		metadata:        make(map[string]string),
+		hub:              hub,
+		conn:             conn,
+		send:             make(chan models.WebSocketMessage, sendBufferSize),
+		id:               clientID,
+		logger:           logger.WithField("client_id", clientID),
+		isAuthenticated:  isAuthenticated,
+		metadata:         make(map[string]string),
+		connectedAt:      now,
+		lastActivity:     now,
+		messagesSent:     0,
+		messagesReceived: 0,
+		remoteAddr:       remoteAddr,
+		userAgent:        userAgent,
+		lastHeartbeat:    now,
 	}
 }
 
@@ -73,6 +104,7 @@ func (c *Client) ReadPump(messageHandler MessageHandler) {
 	// Protocol-level ping handler
 	c.conn.SetPingHandler(func(appData string) error {
 		c.logger.Debug("Received protocol ping, sending protocol pong")
+		c.lastActivity = time.Now() // Update activity timestamp
 		err := c.conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(writeWait))
 		if err != nil {
 			c.logger.Error(err, "Failed to send protocol pong")
@@ -89,6 +121,10 @@ func (c *Client) ReadPump(messageHandler MessageHandler) {
 			}
 			break
 		}
+
+		// Update activity time and increment message count
+		c.lastActivity = time.Now()
+		c.messagesReceived++
 
 		messageBytes = bytes.TrimSpace(bytes.Replace(messageBytes, newline, space, -1))
 
@@ -159,6 +195,10 @@ func (c *Client) WritePump() {
 				return
 			}
 
+			// Increment sent message count and update last activity time
+			c.messagesSent++
+			c.lastActivity = time.Now()
+
 			messageBytes, err := json.Marshal(message)
 			if err != nil {
 				c.logger.Error(err, "Failed to marshal message")
@@ -179,6 +219,10 @@ func (c *Client) WritePump() {
 			n := len(c.send)
 			for i := 0; i < n; i++ {
 				nextMessage := <-c.send
+				
+				// Count each queued message separately
+				c.messagesSent++
+				
 				nextMessageBytes, err := json.Marshal(nextMessage)
 				if err != nil {
 					c.logger.Error(err, "Failed to marshal queued message")
@@ -202,14 +246,17 @@ func (c *Client) WritePump() {
 
 		case <-heartbeatTicker.C:
 			c.logger.Debug("Sending heartbeat to client")
+			now := time.Now()
+			c.lastHeartbeat = now
+			
 			heartbeat := models.WebSocketMessage{
 				Type:    "heartbeat",
-				Content: map[string]interface{}{"timestamp": time.Now().Unix()},
+				Content: map[string]interface{}{"timestamp": now.Unix()},
 				ID:      uuid.New().String(),
-				Time:    time.Now(),
+				Time:    now,
 			}
 
-			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+			if err := c.conn.SetWriteDeadline(now.Add(writeWait)); err != nil {
 				c.logger.Error(err, "Failed to set write deadline for heartbeat")
 				return
 			}
@@ -220,6 +267,10 @@ func (c *Client) WritePump() {
 				c.logger.Error(err, "Failed to marshal heartbeat")
 				continue
 			}
+
+			// Count the heartbeat as a message sent
+			c.messagesSent++
+			c.lastActivity = now
 
 			if err := c.conn.WriteMessage(websocket.TextMessage, heartbeatBytes); err != nil {
 				c.logger.Error(err, "Failed to send heartbeat")

@@ -184,3 +184,16 @@ func (h *Hub) Unregister(client *Client) {
 func (h *Hub) GetType() HubType {
 	return h.hubType
 }
+
+// GetClients returns a slice of all active clients in the hub
+func (h *Hub) GetClients() []*Client {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+	
+	clients := make([]*Client, 0, len(h.clients))
+	for client := range h.clients {
+		clients = append(clients, client)
+	}
+	
+	return clients
+}
