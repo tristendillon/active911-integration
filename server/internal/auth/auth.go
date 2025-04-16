@@ -1244,6 +1244,10 @@ var secondaryRedaction = []DescriptorRedaction{
 		Key:   "med",
 		Level: PartialRedaction,
 	},
+	{
+		Key:   "death",
+		Level: FullRedaction,
+	},
 }
 
 func RedactAlertData(alert *models.Alert) *models.Alert {
