@@ -99,7 +99,7 @@ export default function Dashboard() {
             <div className="w-full h-full block">
               <Header />
               <div className={cn('w-full relative h-[calc(100%-150px)]', isFireTV || (isSilk && 'h-[calc(166%-150px)]'))}>
-                <GoogleMapComponent id="dashboard" mapType={google.maps.MapTypeId.ROADMAP}>
+                <GoogleMapComponent id="dashboard">
                   {alerts.data.map((alert) => (
                     <React.Fragment key={alert.alert.id}>
                       {alert.alert.lat && alert.alert.lon &&

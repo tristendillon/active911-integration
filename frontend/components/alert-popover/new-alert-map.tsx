@@ -9,14 +9,14 @@ import { useMap } from '@/providers/map-provider';
 import { Hydrant } from '@/lib/types';
 import { Marker } from '@react-google-maps/api';
 import { getAlertIcon, getFlowRateColor } from '@/lib/utils';
+import StreetView from './street-view';
 
 interface NewAlertMapProps {
   alert: Alert;
   isFireTV?: boolean;
-  setGlobalHydrants: (hydrants: Hydrant[]) => void;
 }
 
-export default function NewAlertMap({ alert, isFireTV = false, setGlobalHydrants }: NewAlertMapProps) {
+export default function NewAlertMap({ alert, isFireTV = false }: NewAlertMapProps) {
   const { map } = useMap('popover');
   const [hydrants, setHydrants] = useState<Hydrant[]>([]);
   const { weather, loading } = useWeather();
@@ -35,7 +35,6 @@ export default function NewAlertMap({ alert, isFireTV = false, setGlobalHydrants
     const data = await res.json();
     if (res.ok) {
       setHydrants(data.data);
-      setGlobalHydrants(data.data);
     }
   };
 
@@ -61,38 +60,41 @@ export default function NewAlertMap({ alert, isFireTV = false, setGlobalHydrants
   }, [map, coords]);
 
   return (
-    <div className="flex-1 h-full">
+    <div className="flex-1 h-full relative">
       {coords.lat === 0 || coords.lng === 0 || !coords.lat || !coords.lng ? (
         <div className="flex-1 h-full flex items-center justify-center">
           <div className="text-2xl font-bold">No coordinates found</div>
         </div>
       ) : (
+        <>
+          <div className="absolute right-0 bottom-0 w-[400px] h-[400px]">
+            <StreetView alert={alert} />
+          </div>
           <GoogleMapComponent className="h-full" id="popover">
-          <Marker
-            position={coords}
-            icon={{
-              url: getAlertIcon(alert.alert.description!),
-              scaledSize: new google.maps.Size(40, 40),
-            }}
-          />
-          {hydrants?.map((hydrant) => (
             <Marker
-              key={hydrant.id}
-              position={{ lat: hydrant.lat, lng: hydrant.lng }}
+              position={coords}
               icon={{
-                url: `/icons/hydrant-${getFlowRateColor(hydrant.flow_rate ?? 0)}.png`,
+                url: getAlertIcon(alert.alert.description!),
                 scaledSize: new google.maps.Size(40, 40),
-              }}
-            />
-          ))}
-        </GoogleMapComponent>
-      )}
-      {!loading && weather?.alerts && weather.alerts.length > 0 && (
-        <div className={`absolute bottom-1 left-1 flex flex-col gap-2 min-w-[400px]`}>
-          {weather.alerts.map((weatherAlert) => (
-            <WeatherAlertBanner key={weatherAlert.id} weatherAlert={weatherAlert} isFireTV={isFireTV} />
-          ))}
-        </div>
+              }} />
+            {hydrants?.map((hydrant) => (
+              <Marker
+                key={hydrant.id}
+                position={{ lat: hydrant.lat, lng: hydrant.lng }}
+                icon={{
+                  url: `/icons/hydrant-${getFlowRateColor(hydrant.flow_rate ?? 0)}.png`,
+                  scaledSize: new google.maps.Size(40, 40),
+                }} />
+            ))}
+            {!loading && weather?.alerts && weather.alerts.length > 0 && (
+              <div className={`absolute bottom-1 left-1 flex flex-col gap-2 min-w-[400px]`}>
+                {weather.alerts.map((weatherAlert) => (
+                  <WeatherAlertBanner key={weatherAlert.id} weatherAlert={weatherAlert} isFireTV={isFireTV} />
+                ))}
+              </div>
+            )}
+          </GoogleMapComponent>
+        </>
       )}
     </div>
   );

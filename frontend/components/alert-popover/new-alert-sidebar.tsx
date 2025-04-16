@@ -1,8 +1,7 @@
 'use client';
 
-import StreetView from '@/components/alert-popover/street-view';
 import useAmazonDevice from '@/hooks/use-amazon-device';
-import type { Alert as AlertType, Hydrant } from '@/lib/types';
+import type { Alert as AlertType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import React, { useEffect, useState } from 'react';
 import { CommandShortcut } from '../ui/command';
@@ -13,10 +12,9 @@ import CADDetailsDisplay from './cad-details';
 interface NewAlertSidebarProps {
   alert: AlertType;
   units: string[];
-  hydrants: Hydrant[];
 }
 
-export default function NewAlertSidebar({ alert, units, hydrants }: NewAlertSidebarProps) {
+export default function NewAlertSidebar({ alert, units }: NewAlertSidebarProps) {
   const [parsedDetails, setParsedDetails] = useState<CADDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Format timestamp if available
@@ -81,9 +79,6 @@ export default function NewAlertSidebar({ alert, units, hydrants }: NewAlertSide
               </div>
             )}
           </div>
-        </div>
-        <div>
-          <StreetView alert={alert} hydrants={hydrants} />
         </div>
         {alert.alert.units && (
           <div className={cn('rounded-lg border', isFireTV ? 'p-6' : 'p-5')}>

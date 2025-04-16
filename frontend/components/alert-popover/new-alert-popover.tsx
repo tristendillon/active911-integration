@@ -1,6 +1,6 @@
 'use client'
 
-import type { Alert, Hydrant } from '@/lib/types';
+import type { Alert } from '@/lib/types';
 import { useDashboard } from '@/providers/dashboard-provider';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -19,7 +19,6 @@ interface NewAlertPopoverProps {
 export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) {
   const [currentAlert, setCurrentAlert] = useState<Alert | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [hydrants, setHydrants] = useState<Hydrant[]>([]);
   const [alertTimestamp, setAlertTimestamp] = useState<number | null>(null);
 
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -136,10 +135,9 @@ export default function NewAlertPopover({ sound = true }: NewAlertPopoverProps) 
             <NewAlertSidebar
               alert={currentAlert}
               units={units}
-              hydrants={hydrants}
             />
             <div className="md:h-auto md:flex-1 relative h-[60vh]">
-              <NewAlertMap alert={currentAlert} setGlobalHydrants={setHydrants} />
+              <NewAlertMap alert={currentAlert} />
             </div>
           </div>
         </div>

@@ -26,7 +26,7 @@ export default function NewAlertHeader({ alert, onDismiss, autoCloseTime, isFire
 
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
-  }, []);
+  }, [turnoutTimeSeconds]);
 
   // Format elapsed time as mm:ss:ms
   const formatTime = (ms: number): string => {

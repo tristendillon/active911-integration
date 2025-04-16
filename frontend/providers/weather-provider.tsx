@@ -79,8 +79,8 @@ export function WeatherProvider({ children }: WeatherProviderProps) {
 
   useEffect(() => {
     emitListener("new_weather", (data) => {
-      console.log("New Weather Data")
-      console.log(data)
+      const weather = data.content as Weather
+      setWeather(weather)
     })
 
   }, [emitListener])
