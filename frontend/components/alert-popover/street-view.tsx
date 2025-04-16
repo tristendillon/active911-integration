@@ -10,7 +10,7 @@ import {
 
 const containerStyle = {
   width: '100%',
-  height: '400px',
+  height: '300px',
 };
 
 interface StreetViewProps {

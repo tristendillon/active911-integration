@@ -67,7 +67,7 @@ export default function NewAlertMap({ alert, isFireTV = false }: NewAlertMapProp
         </div>
       ) : (
         <>
-          <div className="absolute right-0 bottom-0 w-[400px] h-[400px]">
+          <div className="absolute right-0 bottom-0 w-[300px] h-[300px]">
             <StreetView alert={alert} />
           </div>
           <GoogleMapComponent className="h-full" id="popover">
