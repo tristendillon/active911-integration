@@ -48,7 +48,7 @@ interface UseClientControlsOptions {
 
 export function useClientControls({ password }: UseClientControlsOptions) {
   const [isConnected, setIsConnected] = useState(false);
-  
+
   // Track connection ID to ensure we only handle events from the current connection
   const connectionIdRef = useRef(0);
   // Track if component is mounted to avoid state updates after unmount
@@ -236,35 +236,16 @@ export function useClientControls({ password }: UseClientControlsOptions) {
     };
   }, [cleanupWebSocket, password]);
 
-  // Initialize WebSocket on mount
-  useEffect(() => {
-    isMountedRef.current = true;
-
-    // Add listener to be notified of connection status changes
-    const removeListener = connectionTracker.addListener(() => {
-      if (isMountedRef.current) {
-        setIsConnected(!!connectionTracker.activeConnection && connectionTracker.activeConnection.readyState === WebSocket.OPEN);
-      }
-    });
-
-    const cleanup = connectWebSocket();
-
-    return () => {
-      isMountedRef.current = false;
-      cleanup();
-      removeListener();
-    };
-  }, [connectWebSocket]);
-
-  // Only reconnect when password changes
-  useEffect(() => {
-    if (!isMountedRef.current) return;
-    connectWebSocket();
-  }, [password, connectWebSocket]);
+  const connectClients = useCallback(() => {
+    if (!isConnected) {
+      connectWebSocket();
+    }
+  }, [connectWebSocket, isConnected]);
 
   return {
     isConnected,
     refreshClients,
     redirectClients,
+    connectClients,
   };
 }

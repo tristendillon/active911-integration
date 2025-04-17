@@ -13,7 +13,7 @@ interface ClientControlsProps {
 }
 
 export function ClientControls({ password }: ClientControlsProps) {
-  const { isConnected, refreshClients, redirectClients } = useClientControls({ password });
+  const { isConnected, refreshClients, redirectClients, connectClients } = useClientControls({ password });
   const [customUrl, setCustomUrl] = useState('');
 
   // CSV Upload states
@@ -204,9 +204,16 @@ export function ClientControls({ password }: ClientControlsProps) {
   return (
     <div className="space-y-6">
       <div className="border rounded-md p-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-          <p>Admin Control: {isConnected ? 'Connected' : 'Disconnected'}</p>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <p>Admin Control: {isConnected ? 'Connected' : 'Disconnected'}</p>
+          </div>
+          {!isConnected && (
+            <Button onClick={connectClients}>
+              Connect to Clients
+            </Button>
+          )}
         </div>
 
         <div className="space-y-4">

@@ -1239,6 +1239,8 @@ var primaryRedaction = []DescriptorRedaction{
 	},
 }
 
+// secondaryRedaction is a list of descriptors that are using contains to check for redaction so any descriptor that
+// contains these strings will be redacted to the level specified.
 var secondaryRedaction = []DescriptorRedaction{
 	{
 		Key:   "med",
