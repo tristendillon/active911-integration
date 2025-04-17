@@ -41,8 +41,6 @@ export function ConnectionsTable({ password }: ConnectionTableProps) {
     }
   };
 
-  console.log(connections)
-
   const renderConnectionsTable = (connectionType: 'dashboard' | 'client') => (
     <Card className="w-full shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -66,7 +64,7 @@ export function ConnectionsTable({ password }: ConnectionTableProps) {
           Refresh
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="overflow-y-auto">
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <p className="text-muted-foreground">Loading connections...</p>
@@ -90,7 +88,7 @@ export function ConnectionsTable({ password }: ConnectionTableProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {connections[connectionType].map((connection) => (
+                {connections[connectionType].sort((a, b) => b.connected_at.localeCompare(a.connected_at)).map((connection) => (
                   <TableRow key={connection.id}>
                     <TableCell
                       className="font-mono text-xs"

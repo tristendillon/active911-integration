@@ -203,8 +203,8 @@ export function ClientControls({ password }: ClientControlsProps) {
 
   return (
     <div className="space-y-6">
-      <div className="border rounded-md p-4 space-y-4">
-        <div className="flex items-center justify-between gap-2">
+      <section className="border rounded-md p-4 space-y-4">
+        <header className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             <p>Admin Control: {isConnected ? 'Connected' : 'Disconnected'}</p>
@@ -214,7 +214,7 @@ export function ClientControls({ password }: ClientControlsProps) {
               Connect to Clients
             </Button>
           )}
-        </div>
+        </header>
 
         <div className="space-y-4">
           <div>
@@ -278,88 +278,90 @@ export function ClientControls({ password }: ClientControlsProps) {
             </p>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Hydrant CSV Upload */}
-      <Card className="p-4">
-        <h3 className="text-lg font-medium mb-2">Upload Hydrant Data (CSV)</h3>
-        <div className="space-y-4">
-          <div>
-            <p className="text-sm text-gray-500 mb-2">
-              Upload a CSV file with the following headers:
-              <code className="bg-gray-100 px-1 rounded mx-1">hydrant_type,nozzles,status,lng,lat,flow_rate,flow_status</code>
-            </p>
+      <section>
+        <Card className="p-4">
+          <h3 className="text-lg font-medium mb-2">Upload Hydrant Data (CSV)</h3>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-500 mb-2">
+                Upload a CSV file with the following headers:
+                <code className="bg-gray-100 px-1 rounded mx-1">hydrant_type,nozzles,status,lng,lat,flow_rate,flow_status</code>
+              </p>
 
-            <div className="flex gap-2">
-              <Input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                disabled={uploading}
-                className="flex-1"
-              />
-              <Button
-                onClick={processCSV}
-                disabled={!csvFile || uploading}
-                variant="default"
-              >
-                Upload
-              </Button>
-              <Button
-                onClick={handleReset}
-                variant="outline"
-                disabled={uploading}
-              >
-                Reset
-              </Button>
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-500 mt-2">{error}</p>
-            )}
-          </div>
-
-          {uploadProgress && (
-            <div className="space-y-2">
-              <Progress value={uploadProgress.progress} className="w-full h-2" />
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>
-                  Status: {uploadProgress.in_progress ? 'Processing...' : 'Complete'}
-                </span>
-                <span>
-                  {uploadProgress.processed} / {uploadProgress.total} hydrants processed
-                </span>
+              <div className="flex gap-2">
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileChange}
+                  disabled={uploading}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={processCSV}
+                  disabled={!csvFile || uploading}
+                  variant="default"
+                >
+                  Upload
+                </Button>
+                <Button
+                  onClick={handleReset}
+                  variant="outline"
+                  disabled={uploading}
+                >
+                  Reset
+                </Button>
               </div>
 
-              {/* Results summary */}
-              {!uploadProgress.in_progress && (
-                <div className="text-sm space-y-1 mt-2">
-                  <p className="font-medium">Results:</p>
-                  <p className="text-green-600">✓ {uploadProgress.successful} hydrants successfully added</p>
-                  {uploadProgress.failed > 0 && (
-                    <div>
-                      <p className="text-red-600">✗ {uploadProgress.failed} hydrants failed</p>
-                      {uploadProgress.failedItems && uploadProgress.failedItems.length > 0 && (
-                        <div className="mt-2 max-h-40 overflow-y-auto">
-                          <p className="font-medium text-xs">Error details:</p>
-                          <ul className="text-xs list-disc pl-4 mt-1">
-                            {uploadProgress.failedItems.map((item, i) => (
-                              <li key={i} className="text-red-600">
-                                Row {item.index + 1}: {item.error}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+              {error && (
+                <p className="text-sm text-red-500 mt-2">{error}</p>
               )}
             </div>
-          )}
-        </div>
-      </Card>
+
+            {uploadProgress && (
+              <div className="space-y-2">
+                <Progress value={uploadProgress.progress} className="w-full h-2" />
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>
+                    Status: {uploadProgress.in_progress ? 'Processing...' : 'Complete'}
+                  </span>
+                  <span>
+                    {uploadProgress.processed} / {uploadProgress.total} hydrants processed
+                  </span>
+                </div>
+
+                {/* Results summary */}
+                {!uploadProgress.in_progress && (
+                  <div className="text-sm space-y-1 mt-2">
+                    <p className="font-medium">Results:</p>
+                    <p className="text-green-600">✓ {uploadProgress.successful} hydrants successfully added</p>
+                    {uploadProgress.failed > 0 && (
+                      <div>
+                        <p className="text-red-600">✗ {uploadProgress.failed} hydrants failed</p>
+                        {uploadProgress.failedItems && uploadProgress.failedItems.length > 0 && (
+                          <div className="mt-2 max-h-40 overflow-y-auto">
+                            <p className="font-medium text-xs">Error details:</p>
+                            <ul className="text-xs list-disc pl-4 mt-1">
+                              {uploadProgress.failedItems.map((item, i) => (
+                                <li key={i} className="text-red-600">
+                                  Row {item.index + 1}: {item.error}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+      </section>
     </div>
   );
 }

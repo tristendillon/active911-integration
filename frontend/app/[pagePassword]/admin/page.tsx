@@ -10,16 +10,18 @@ interface AdminPageProps {
 export default async function AdminPage({ params }: AdminPageProps) {
   const { pagePassword } = await params;
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Admin Dashboard</h1>
-        <p className="text-gray-500">Manage system settings and control connected clients</p>
-      </div>
+    <main className="py-6 h-full overflow-y-auto">
+      <div className='container mx-auto'>
+        <header className="mb-6">
+          <h1 className="text-2xl font-bold mb-2">Admin Dashboard</h1>
+          <p className="text-gray-500">Manage system settings and control connected clients</p>
+        </header>
 
-      <div className="grid gap-6">
-        <ClientControls password={pagePassword} />
-        <ConnectionsTable password={pagePassword} />
+        <div className="grid gap-6">
+          <ClientControls password={pagePassword} />
+          <ConnectionsTable password={pagePassword} />
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
