@@ -86,7 +86,7 @@ export default function AlertItem({ units, alert, noEmit, isFireTV = false, show
       )}
       <div className="flex flex-row justify-between items-center">
         <CommandShortcut className={cn(isFireTV ? 'text-base ml-0' : 'ml-0')}>{alert.alert.map_address}</CommandShortcut>
-        <div className={cn('flex flex-row items-center h-full', isFireTV ? 'gap-3' : 'gap-2')}>
+        <div className={cn('flex flex-row items-center h-full flex-wrap', isFireTV ? 'gap-3' : 'gap-2')}>
           {alert.alert.units?.split(' ').map((unit) => (
             <Badge variant={units?.includes(unit) ? 'destructive' : 'default'} key={unit} className={cn(isFireTV ? 'text-base' : '')}>
               {unit}
