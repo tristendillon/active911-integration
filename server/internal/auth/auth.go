@@ -101,11 +101,26 @@ type RedactionLevel int
 const (
 	// NormalRedaction redacts always redacted fields only
 	NormalRedaction RedactionLevel = iota
+	// ReplacementRedaction, redacts fields and replaces them
+	ReplacementRedaction
 	// PartialRedaction redacts more fields, primarily location data
 	PartialRedaction
 	// FullRedaction redacts the entire alert other than timestamp and ID
 	FullRedaction
 )
+
+var fieldsToReplace = []map[string]interface{}{
+	{"Description": "Medical Incident"},
+	{"CrossStreet": "[REDACTED]"},
+	{"MapAddress": "[REDACTED]"},
+	{"Place": "[REDACTED]"},
+	{"DispatchCoords": "[REDACTED]"},
+	{"City": "[REDACTED]"},
+	{"State": "[REDACTED]"},
+	{"CoordinateSource": "[REDACTED]"},
+	{"Lat": 0},
+	{"Lon": 0},
+}
 
 var alwaysRedactedFields = []string{
 	"Details",
@@ -129,6 +144,7 @@ var preservedFieldsInFullRedaction = []string{
 	"ID",
 	"Stamp",
 	"Status",
+	"Units",
 }
 
 type DescriptorRedaction struct {
@@ -1244,7 +1260,7 @@ var primaryRedaction = []DescriptorRedaction{
 var secondaryRedaction = []DescriptorRedaction{
 	{
 		Key:   "med",
-		Level: PartialRedaction,
+		Level: ReplacementRedaction,
 	},
 	{
 		Key:   "death",
@@ -1264,9 +1280,10 @@ func determineRedactionLevel(descriptor string) RedactionLevel {
 
 	// Clean the descriptor: lowercase and remove non-alphanumeric characters
 	clean := cleanDescriptor(descriptor)
-	// Look for a matching descriptor in our redaction mappings
-	for _, dr := range primaryRedaction {
-		if dr.Key == clean {
+
+	// first pass for contain strings which is the primary check.
+	for _, dr := range secondaryRedaction {
+		if strings.Contains(clean, dr.Key) {
 			level = dr.Level
 			break
 		}
@@ -1276,9 +1293,9 @@ func determineRedactionLevel(descriptor string) RedactionLevel {
 		return level
 	}
 
-	// Second pass for contain strings which is secondary check.
-	for _, dr := range secondaryRedaction {
-		if strings.Contains(clean, dr.Key) {
+	// Look for a matching descriptor in our redaction mappings
+	for _, dr := range primaryRedaction {
+		if dr.Key == clean {
 			level = dr.Level
 			break
 		}
@@ -1312,6 +1329,10 @@ func RedactAlertDataWithLevel(alert *models.Alert, level RedactionLevel) *models
 		// Only redact always redacted fields
 		redactFields(alertValue, alwaysRedactedFields)
 
+	case ReplacementRedaction:
+		redactFields(alertValue, alwaysRedactedFields)
+		replaceFields(alertValue, fieldsToReplace)
+
 	case PartialRedaction:
 		// Redact always redacted fields
 		redactFields(alertValue, alwaysRedactedFields)
@@ -1344,6 +1365,50 @@ func RedactAlertDataWithLevel(alert *models.Alert, level RedactionLevel) *models
 	}
 
 	return &redactedAlert
+}
+
+func replaceFields(alertValue reflect.Value, replacements []map[string]interface{}) {
+	for _, fieldMap := range replacements {
+		for fieldName, replacement := range fieldMap {
+			fieldValue := alertValue.FieldByName(fieldName)
+
+			if !fieldValue.IsValid() || !fieldValue.CanSet() {
+				continue
+			}
+
+			switch fieldValue.Kind() {
+			case reflect.String:
+				if str, ok := replacement.(string); ok {
+					fieldValue.SetString(str)
+				}
+			case reflect.Ptr:
+				// Handle pointer to string
+				if fieldValue.Type().Elem().Kind() == reflect.String {
+					if str, ok := replacement.(string); ok {
+						fieldValue.Set(reflect.ValueOf(&str))
+					}
+				}
+			case reflect.Float64:
+				if val, ok := toFloat64(replacement); ok {
+					fieldValue.SetFloat(val)
+				}
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				if val, ok := toInt64(replacement); ok {
+					fieldValue.SetInt(val)
+				}
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				if val, ok := toUint64(replacement); ok {
+					fieldValue.SetUint(val)
+				}
+			case reflect.Bool:
+				if val, ok := replacement.(bool); ok {
+					fieldValue.SetBool(val)
+				}
+			case reflect.Slice:
+				fieldValue.Set(reflect.ValueOf(replacement))
+			}
+		}
+	}
 }
 
 // redactFields applies redaction to the specified fields
@@ -1388,6 +1453,49 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func toFloat64(val interface{}) (float64, bool) {
+	switch v := val.(type) {
+	case float32:
+		return float64(v), true
+	case float64:
+		return v, true
+	case int:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case uint:
+		return float64(v), true
+	default:
+		return 0, false
+	}
+}
+
+func toInt64(val interface{}) (int64, bool) {
+	switch v := val.(type) {
+	case int:
+		return int64(v), true
+	case int64:
+		return v, true
+	case float64:
+		return int64(v), true
+	default:
+		return 0, false
+	}
+}
+
+func toUint64(val interface{}) (uint64, bool) {
+	switch v := val.(type) {
+	case uint:
+		return uint64(v), true
+	case uint64:
+		return v, true
+	case float64:
+		return uint64(v), true
+	default:
+		return 0, false
+	}
 }
 
 // Auth middleware adds authentication info to the request context
